@@ -2,7 +2,9 @@ import AppKit
 import SwiftUI
 
 /// Borderless, non-activating panel that floats over the notch on every space,
-/// including over fullscreen apps.
+/// including over fullscreen apps. The window frame is always the full open
+/// size, pinned top-center; all open/close morphing happens inside SwiftUI.
+/// Transparent regions pass clicks through (NSHostingView hit-testing).
 final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
@@ -14,12 +16,9 @@ final class NotchController: NSObject {
     let viewModel: NotchViewModel
     private let screen: NSScreen
     private var clickOutsideMonitor: Any?
-    private var shrinkTask: Task<Void, Never>?
 
-    /// Margin around the open content so shadows/hover targets aren't clipped.
-    private let openPadding: CGFloat = 60
-    /// Horizontal hover margin around the closed notch.
-    private let closedPadding: CGFloat = 24
+    /// Margin around the open content so shadows aren't clipped.
+    private let framePadding: CGFloat = 60
 
     init(screen: NSScreen, settings: SettingsStore) {
         self.screen = screen
@@ -28,7 +27,7 @@ final class NotchController: NSObject {
 
         panel = NotchPanel(
             contentRect: .zero,
-            styleMask: [.borderless, .nonactivatingPanel, .utilityWindow],
+            styleMask: [.borderless, .nonactivatingPanel, .utilityWindow, .hudWindow],
             backing: .buffered,
             defer: true
         )
@@ -37,14 +36,16 @@ final class NotchController: NSObject {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.level = .screenSaver
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isMovable = false
         panel.isMovableByWindowBackground = false
         panel.hidesOnDeactivate = false
         panel.isFloatingPanel = true
         panel.becomesKeyOnlyIfNeeded = true
+        panel.isReleasedWhenClosed = false
         panel.animationBehavior = .none
+        panel.appearance = NSAppearance(named: .darkAqua)
 
         let hosting = NSHostingView(
             rootView: NotchRootView()
@@ -54,11 +55,7 @@ final class NotchController: NSObject {
         hosting.wantsLayer = true
         panel.contentView = hosting
 
-        viewModel.onStateChange = { [weak self] state in
-            self?.stateChanged(state)
-        }
-
-        applyFrame(for: .closed, animatedContent: false)
+        applyFrame()
         panel.orderFrontRegardless()
 
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -79,45 +76,19 @@ final class NotchController: NSObject {
 
     func refreshGeometry() {
         viewModel.geometry = NotchGeometry.forScreen(screen)
-        applyFrame(for: viewModel.state, animatedContent: false)
+        applyFrame()
     }
 
     func tearDown() {
         panel.orderOut(nil)
     }
 
-    private func stateChanged(_ state: NotchState) {
-        shrinkTask?.cancel()
-        switch state {
-        case .open:
-            // Grow the window immediately; SwiftUI animates the visible shape inside it.
-            applyFrame(for: .open, animatedContent: true)
-            panel.makeKeyAndOrderFront(nil)
-        case .closed:
-            // Let the close animation finish before shrinking the window.
-            shrinkTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 450_000_000)
-                guard let self, !Task.isCancelled, self.viewModel.state == .closed else { return }
-                self.applyFrame(for: .closed, animatedContent: false)
-            }
-        }
-    }
-
-    private func applyFrame(for state: NotchState, animatedContent: Bool) {
+    private func applyFrame() {
         let geometry = viewModel.geometry
-        let size: CGSize
-        switch state {
-        case .closed:
-            size = CGSize(
-                width: viewModel.closedSize.width + closedPadding * 2,
-                height: viewModel.closedSize.height + 4
-            )
-        case .open:
-            size = CGSize(
-                width: max(viewModel.openSize.width, viewModel.closedSize.width) + openPadding * 2,
-                height: viewModel.openSize.height + openPadding
-            )
-        }
+        let size = CGSize(
+            width: max(viewModel.openSize.width, viewModel.closedSize.width) + framePadding * 2,
+            height: viewModel.openSize.height + framePadding
+        )
         let frame = CGRect(
             x: geometry.screenFrame.midX - size.width / 2,
             y: geometry.screenFrame.maxY - size.height,
