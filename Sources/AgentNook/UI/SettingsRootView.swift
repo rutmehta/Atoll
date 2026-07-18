@@ -3,14 +3,76 @@ import SwiftUI
 struct SettingsRootView: View {
     @EnvironmentObject var settings: SettingsStore
 
-    var body: some View {
-        TabView {
-            GeneralSettingsView()
-                .tabItem { Label("General", systemImage: "gear") }
-            LiveActivitySettingsView()
-                .tabItem { Label("Live Activities", systemImage: "bolt.badge.clock") }
+    enum Pane: String, CaseIterable, Identifiable {
+        case general = "General"
+        case liveActivities = "Live Activities"
+        case media = "Media"
+        case calendar = "Calendar"
+        case shelf = "Shelf"
+        case hud = "HUD"
+        case system = "System"
+        case agents = "Agents"
+        case mirror = "Mirror"
+        case timers = "Timers"
+        case notes = "Notes"
+        case todos = "To-dos"
+        case shortcuts = "Shortcuts"
+
+        var id: String { rawValue }
+
+        var systemImage: String {
+            switch self {
+            case .general: return "gear"
+            case .liveActivities: return "bolt.badge.clock"
+            case .media: return "play.circle"
+            case .calendar: return "calendar"
+            case .shelf: return "tray.full"
+            case .hud: return "rectangle.tophalf.inset.filled"
+            case .system: return "battery.100.bolt"
+            case .agents: return "sparkles.rectangle.stack"
+            case .mirror: return "web.camera"
+            case .timers: return "timer"
+            case .notes: return "note.text"
+            case .todos: return "checklist"
+            case .shortcuts: return "app.connected.to.app.below.fill"
+            }
         }
-        .frame(width: 560, height: 480)
+    }
+
+    @State private var pane: Pane = .general
+
+    var body: some View {
+        HSplitView {
+            List(Pane.allCases, selection: $pane) { item in
+                Label(item.rawValue, systemImage: item.systemImage)
+                    .tag(item)
+            }
+            .listStyle(.sidebar)
+            .frame(width: 170)
+
+            paneContent
+                .frame(minWidth: 400, maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 640, height: 520)
+    }
+
+    @ViewBuilder
+    private var paneContent: some View {
+        switch pane {
+        case .general: GeneralSettingsView()
+        case .liveActivities: LiveActivitySettingsView()
+        case .media: MediaSettingsView()
+        case .calendar: CalendarSettingsView()
+        case .shelf: ShelfSettingsView()
+        case .hud: HUDSettingsView()
+        case .system: SystemEventsSettingsView()
+        case .agents: AgentsSettingsView()
+        case .mirror: MirrorSettingsView()
+        case .timers: TimersSettingsView()
+        case .notes: NotesSettingsView()
+        case .todos: TodosSettingsView()
+        case .shortcuts: ShortcutsSettingsView()
+        }
     }
 }
 
@@ -42,6 +104,7 @@ struct GeneralSettingsView: View {
                     .onChange(of: launchAtLogin) { _, newValue in
                         settings.launchAtLogin = newValue
                     }
+                LabeledContent("Toggle shortcut", value: "⌥⌘N")
             }
         }
         .formStyle(.grouped)

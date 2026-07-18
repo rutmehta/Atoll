@@ -1,75 +1,176 @@
 import SwiftUI
 
-/// The expanded notch hub: tab bar + active feature view.
+extension Notification.Name {
+    static let agentNookOpenSettings = Notification.Name("AgentNook.openSettings")
+}
+
+/// The expanded notch hub: tab bar + active feature pane.
 struct OpenNotchView: View {
     @EnvironmentObject var vm: NotchViewModel
 
+    enum ToolPane: String, CaseIterable, Identifiable {
+        case timers = "Timers"
+        case notes = "Notes"
+        case todos = "To-dos"
+        case shortcuts = "Shortcuts"
+        case mirror = "Mirror"
+
+        var id: String { rawValue }
+
+        var systemImage: String {
+            switch self {
+            case .timers: return "timer"
+            case .notes: return "note.text"
+            case .todos: return "checklist"
+            case .shortcuts: return "app.connected.to.app.below.fill"
+            case .mirror: return "web.camera"
+            }
+        }
+    }
+
+    @AppStorage("tools.selectedPane") private var toolPaneRaw = ToolPane.timers.rawValue
+
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             tabBar
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(.top, vm.geometry.notchSize.height + 4)
-        .padding(.horizontal, 18)
-        .padding(.bottom, 16)
+        .padding(.top, vm.geometry.notchSize.height + 2)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
         .foregroundStyle(.white)
     }
 
+    // MARK: Tab bar
+
     private var tabBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(NotchTab.allCases) { tab in
-                Button {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                        vm.tab = tab
-                    }
-                } label: {
-                    Label(tab.rawValue, systemImage: tab.systemImage)
-                        .labelStyle(.titleAndIcon)
-                        .font(.system(size: 12, weight: .medium))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(vm.tab == tab ? Color.white.opacity(0.15) : .clear)
-                        )
-                }
-                .buttonStyle(.plain)
+                tabButton(tab)
             }
             Spacer()
+            Button {
+                vm.isPinned.toggle()
+                if vm.isPinned { vm.cancelPendingClose() }
+            } label: {
+                Image(systemName: vm.isPinned ? "pin.fill" : "pin")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(vm.isPinned ? Color.orange : Color.white.opacity(0.55))
+                    .frame(width: 24, height: 22)
+                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(vm.isPinned ? 0.12 : 0)))
+            }
+            .buttonStyle(.plain)
+            .help(vm.isPinned ? "Unpin the nook" : "Keep the nook open")
+            Button {
+                NotificationCenter.default.post(name: .agentNookOpenSettings, object: nil)
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color.white.opacity(0.55))
+                    .frame(width: 24, height: 22)
+            }
+            .buttonStyle(.plain)
+            .help("AgentNook Settings")
         }
     }
+
+    private func tabButton(_ tab: NotchTab) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                vm.tab = tab
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: tab.systemImage)
+                    .font(.system(size: 11, weight: .medium))
+                Text(tab.rawValue)
+                    .font(.system(size: 11.5, weight: .medium))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4.5)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(vm.tab == tab ? Color.white.opacity(0.16) : .clear)
+            )
+            .overlay(alignment: .topTrailing) {
+                if tab == .agents, AgentSessionStore.shared.attention {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 5, height: 5)
+                        .offset(x: 1, y: -1)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Panes
 
     @ViewBuilder
     private var content: some View {
         switch vm.tab {
         case .home:
-            PlaceholderPane(title: "Now Playing", icon: "play.circle")
+            HStack(spacing: 10) {
+                MediaPlayerCard()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                CalendarWidgetView()
+                    .frame(width: 232)
+                    .frame(maxHeight: .infinity)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+            }
         case .shelf:
-            PlaceholderPane(title: "Shelf", icon: "tray.full")
+            ShelfView()
         case .agents:
-            PlaceholderPane(title: "Agent Sessions", icon: "sparkles.rectangle.stack")
+            AgentsPanelView(onDismiss: { vm.close() })
         case .tools:
-            PlaceholderPane(title: "Tools", icon: "wrench.and.screwdriver")
+            HStack(spacing: 8) {
+                toolRail
+                toolContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
     }
-}
 
-struct PlaceholderPane: View {
-    let title: String
-    let icon: String
+    private var toolPane: ToolPane {
+        ToolPane(rawValue: toolPaneRaw) ?? .timers
+    }
 
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 28))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            Text("Coming soon")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+    private var toolRail: some View {
+        VStack(spacing: 4) {
+            ForEach(ToolPane.allCases) { pane in
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
+                        toolPaneRaw = pane.rawValue
+                    }
+                } label: {
+                    VStack(spacing: 2) {
+                        Image(systemName: pane.systemImage)
+                            .font(.system(size: 13, weight: .medium))
+                        Text(pane.rawValue)
+                            .font(.system(size: 8.5))
+                    }
+                    .frame(width: 52, height: 42)
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(toolPane == pane ? Color.white.opacity(0.16) : Color.white.opacity(0.04))
+                    )
+                    .foregroundStyle(toolPane == pane ? .white : Color.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    @ViewBuilder
+    private var toolContent: some View {
+        switch toolPane {
+        case .timers: TimersWidgetView()
+        case .notes: NotesWidgetView()
+        case .todos: TodosWidgetView()
+        case .shortcuts: ShortcutsWidgetView()
+        case .mirror: MirrorView()
+        }
     }
 }

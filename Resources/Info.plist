@@ -28,6 +28,10 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>AgentNook uses the camera for the notch mirror.</string>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>AgentNook shows a notch notification when Bluetooth devices connect or disconnect.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>AgentNook shows your upcoming events in the notch.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

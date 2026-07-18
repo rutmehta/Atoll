@@ -8,6 +8,12 @@ import SwiftUI
 final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    /// Never clamp to the visible frame — the whole point is to sit over the
+    /// menu bar / notch area.
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+        frameRect
+    }
 }
 
 @MainActor
@@ -36,7 +42,6 @@ final class NotchController: NSObject {
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = false
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         panel.isMovable = false
         panel.isMovableByWindowBackground = false
@@ -46,6 +51,8 @@ final class NotchController: NSObject {
         panel.isReleasedWhenClosed = false
         panel.animationBehavior = .none
         panel.appearance = NSAppearance(named: .darkAqua)
+        // Set AFTER isFloatingPanel — the isFloatingPanel setter resets level to .floating.
+        panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 3)
 
         let hosting = NSHostingView(
             rootView: NotchRootView()
@@ -60,7 +67,7 @@ final class NotchController: NSObject {
 
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self, self.viewModel.state == .open else { return }
+                guard let self, self.viewModel.state == .open, !self.viewModel.isPinned else { return }
                 if !self.panel.frame.contains(NSEvent.mouseLocation) {
                     self.viewModel.close()
                 }

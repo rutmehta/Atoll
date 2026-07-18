@@ -14,6 +14,20 @@ let package = Package(
                 .product(name: "MediaRemoteAdapter", package: "mediaremote-adapter")
             ],
             path: "Sources/AgentNook",
+            exclude: [
+                "Features/Agents/INTEGRATION.md",
+                "Features/AgentsUI/INTEGRATION.md",
+                "Features/CalendarWidget/INTEGRATION.md",
+                "Features/HUD/INTEGRATION.md",
+                "Features/Media/INTEGRATION.md",
+                "Features/Mirror/INTEGRATION.md",
+                "Features/Notes/INTEGRATION.md",
+                "Features/Shelf/INTEGRATION.md",
+                "Features/ShortcutsRunner/INTEGRATION.md",
+                "Features/SystemEvents/INTEGRATION.md",
+                "Features/Timers/INTEGRATION.md",
+                "Features/Todos/INTEGRATION.md"
+            ],
             resources: [
                 .copy("Resources/Adapters")
             ],

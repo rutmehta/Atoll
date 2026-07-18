@@ -32,16 +32,20 @@ final class NotchViewModel: ObservableObject {
     @Published var isHoveringClosedNotch = false
     /// Set while a drag-and-drop is hovering anywhere near the notch; forces the shelf open.
     @Published var isDropTargeted = false
+    /// Pin/lock: while true the open notch never auto-closes.
+    @Published var isPinned = false
 
     let settings: SettingsStore
 
     /// Size of the expanded notch content.
     var openSize: CGSize { CGSize(width: 640, height: 400) }
-    /// Extra width added to each side of the closed notch for live-activity "wings".
-    var wingWidth: CGFloat = 0
+    /// Measured widths of the live-activity "wings" flanking the closed notch.
+    /// Updated by ClosedNotchView via preference keys.
+    @Published var leftWingWidth: CGFloat = 0
+    @Published var rightWingWidth: CGFloat = 0
 
     var closedSize: CGSize {
-        CGSize(width: geometry.notchSize.width + wingWidth * 2,
+        CGSize(width: geometry.notchSize.width + leftWingWidth + rightWingWidth,
                height: geometry.notchSize.height)
     }
 
@@ -75,6 +79,7 @@ final class NotchViewModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             }
             guard let self, !Task.isCancelled else { return }
+            self.isPinned = false
             withAnimation(Self.closeAnimation) { self.state = .closed }
             self.onStateChange?(.closed)
         }
@@ -105,7 +110,7 @@ final class NotchViewModel: ObservableObject {
 
     /// Called when the pointer leaves the open notch entirely.
     func mouseExitedOpenNotch() {
-        guard state == .open, !isDropTargeted else { return }
+        guard state == .open, !isDropTargeted, !isPinned else { return }
         close(after: 0.25)
     }
 
