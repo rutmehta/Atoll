@@ -388,13 +388,14 @@ private struct TimersStopwatchPane: View {
                     if manager.stopwatchRunning || elapsed > 0 {
                         lapRow(
                             label: "Lap \(laps.count + 1)",
-                            delta: elapsed - (laps.last?.total ?? 0),
+                            delta: elapsed - (laps.first?.total ?? 0),
                             total: elapsed,
                             deltaColor: .white.opacity(0.45),
                             live: true
                         )
                     }
-                    ForEach(laps.reversed()) { lap in
+                    // `laps` is already newest-first (inserted at index 0).
+                    ForEach(laps) { lap in
                         lapRow(
                             label: "Lap \(lap.index)",
                             delta: lap.delta,

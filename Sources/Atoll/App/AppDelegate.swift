@@ -233,6 +233,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?
                 .write(to: URL(fileURLWithPath: path))
+        } else if command == "axstatus" {
+            try? (AXIsProcessTrusted() ? "trusted" : "untrusted")
+                .write(toFile: "/tmp/atoll-axstatus", atomically: true, encoding: .utf8)
+        } else if command == "axprompt" {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        } else if command.hasPrefix("click:") {
+            // "click:x,y" in screen points (top-left origin). Posts a real
+            // mouse down/up pair so actual hit-testing is exercised.
+            let parts = command.dropFirst("click:".count).split(separator: ",")
+            guard parts.count == 2, let x = Double(parts[0]), let y = Double(parts[1]) else { return }
+            let point = CGPoint(x: x, y: y)
+            for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+                CGEvent(mouseEventSource: nil, mouseType: type,
+                        mouseCursorPosition: point, mouseButton: .left)?
+                    .post(tap: .cghidEventTap)
+                usleep(60_000)
+            }
+        } else if command.hasPrefix("move:") {
+            let parts = command.dropFirst("move:".count).split(separator: ",")
+            guard parts.count == 2, let x = Double(parts[0]), let y = Double(parts[1]) else { return }
+            CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                    mouseCursorPosition: CGPoint(x: x, y: y), mouseButton: .left)?
+                .post(tap: .cghidEventTap)
+        } else if command.hasPrefix("key:") {
+            // "key:keycode[,cmd][,opt][,shift][,ctrl]"
+            let parts = command.dropFirst("key:".count).split(separator: ",").map(String.init)
+            guard let code = parts.first.flatMap({ UInt16($0) }) else { return }
+            var flags: CGEventFlags = []
+            if parts.contains("cmd") { flags.insert(.maskCommand) }
+            if parts.contains("opt") { flags.insert(.maskAlternate) }
+            if parts.contains("shift") { flags.insert(.maskShift) }
+            if parts.contains("ctrl") { flags.insert(.maskControl) }
+            for down in [true, false] {
+                let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
+                event?.flags = flags
+                event?.post(tap: .cghidEventTap)
+                usleep(40_000)
+            }
         }
     }
 
