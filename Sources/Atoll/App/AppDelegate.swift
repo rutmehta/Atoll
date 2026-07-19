@@ -63,13 +63,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         AgentSessionStore.shared.start()
         AgentHookInstaller.shared.refreshStatus()
 
-        // Bluetooth triggers a TCC prompt on first use — defer a few seconds so
-        // launch isn't a wall of dialogs, and only when the live activity is on.
+        // Bluetooth triggers a modal TCC prompt on first use (which blocks the
+        // main thread) — never auto-start it. Start only when macOS already
+        // granted access, or when the user explicitly enabled the toggle
+        // (explicit = present in the persistent domain, not a registered default).
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            if UserDefaults.standard.object(forKey: "systemEvents.bluetoothLiveActivity") as? Bool ?? true {
+            if Self.bluetoothExplicitlyWanted {
                 BluetoothMonitor.shared.start()
             }
         }
+    }
+
+    private static var bluetoothExplicitlyWanted: Bool {
+        let domain = Bundle.main.bundleIdentifier.flatMap {
+            UserDefaults.standard.persistentDomain(forName: $0)
+        }
+        guard let explicit = domain?["systemEvents.bluetoothLiveActivity"] as? Bool else {
+            return false // registered default only — user never chose; avoid the TCC prompt
+        }
+        return explicit
     }
 
     private func wireIntegrations() {
@@ -130,13 +142,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
-        // Enabling the Bluetooth live activity at runtime must boot the monitor
-        // (start() is idempotent; the TCC prompt fires on first IOBluetooth use).
+        // Enabling the Bluetooth live activity at runtime boots the monitor
+        // (start() is idempotent; the TCC prompt fires on first IOBluetooth use,
+        // which is fine here because the user just flipped the toggle).
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { _ in
             Task { @MainActor in
-                if UserDefaults.standard.object(forKey: "systemEvents.bluetoothLiveActivity") as? Bool == true {
+                if Self.bluetoothExplicitlyWanted {
                     BluetoothMonitor.shared.start()
                 }
             }

@@ -20,7 +20,9 @@ struct MediaPlayerCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.06))
+                .fill(LinearGradient(
+                    colors: [manager.artworkTint.opacity(0.16), Color.white.opacity(0.04)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing))
         )
         .onAppear { manager.refreshSystemVolume() }
     }
@@ -28,15 +30,17 @@ struct MediaPlayerCard: View {
     // MARK: Full player
 
     private func playerBody(_ playback: MediaPlaybackState) -> some View {
+        // The info column is height-bounded so the whole block centers as one
+        // unit in the (tall) card instead of stretching with dead space.
         HStack(alignment: .center, spacing: 16) {
             artwork(playback)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 sourceRow(playback)
                 MediaMarqueeText(
                     text: playback.title.isEmpty ? "Unknown title" : playback.title,
-                    font: .system(size: 14, weight: .semibold),
+                    font: .system(size: 15, weight: .semibold),
                     color: .white,
-                    height: 19
+                    height: 20
                 )
                 MediaMarqueeText(
                     text: subtitle(playback),
@@ -44,7 +48,7 @@ struct MediaPlayerCard: View {
                     color: .white.opacity(0.6),
                     height: 16
                 )
-                Spacer(minLength: 2)
+                Spacer(minLength: 4)
                 MediaSeekBar(
                     playback: playback,
                     tint: manager.artworkTint,
@@ -53,8 +57,10 @@ struct MediaPlayerCard: View {
                 transportRow(playback)
                 volumeRow
             }
+            .frame(height: 152)
         }
-        .padding(14)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func subtitle(_ playback: MediaPlaybackState) -> String {
@@ -71,22 +77,27 @@ struct MediaPlayerCard: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 128, height: 128)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: manager.artworkTint.opacity(0.45), radius: 22, y: 2)
+                    .frame(width: 152, height: 152)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: manager.artworkTint.opacity(0.5), radius: 24, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
             } else {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.white.opacity(0.08))
-                    .frame(width: 128, height: 128)
+                    .frame(width: 152, height: 152)
                     .overlay(
                         Image(systemName: "music.note")
-                            .font(.system(size: 36, weight: .light))
+                            .font(.system(size: 40, weight: .light))
                             .foregroundStyle(.white.opacity(0.3))
                     )
             }
         }
-        .opacity(playback.isPlaying ? 1 : 0.75)
-        .animation(.easeOut(duration: 0.25), value: playback.isPlaying)
+        .scaleEffect(playback.isPlaying ? 1 : 0.94)
+        .opacity(playback.isPlaying ? 1 : 0.8)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: playback.isPlaying)
     }
 
     private func sourceRow(_ playback: MediaPlaybackState) -> some View {
@@ -108,6 +119,14 @@ struct MediaPlayerCard: View {
                     .foregroundStyle(.white.opacity(0.4))
             }
             Spacer(minLength: 0)
+            MediaAudioVisualizer(
+                isPlaying: playback.isPlaying,
+                tint: manager.artworkTint,
+                barCount: 4,
+                maxBarHeight: 11,
+                barWidth: 2,
+                spacing: 2
+            )
         }
     }
 
