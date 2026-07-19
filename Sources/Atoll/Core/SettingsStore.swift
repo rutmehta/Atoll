@@ -20,6 +20,22 @@ final class SettingsStore: ObservableObject {
     @AppStorage("notchExtraWidth") var notchExtraWidth = 0.0 { willSet { objectWillChange.send() } }
     @AppStorage("openCornerRadius") var openCornerRadius = 24.0 { willSet { objectWillChange.send() } }
     @AppStorage("showBorderGlow") var showBorderGlow = false { willSet { objectWillChange.send() } }
+    /// "black" | "gradient" | "artwork"
+    @AppStorage("appearance.backgroundStyle") var backgroundStyle = "black" { willSet { objectWillChange.send() } }
+    @AppStorage("appearance.gradientStartHex") var gradientStartHex = "#101018" { willSet { objectWillChange.send() } }
+    @AppStorage("appearance.gradientEndHex") var gradientEndHex = "#000000" { willSet { objectWillChange.send() } }
+    @AppStorage("appearance.accentHex") var accentHex = "#FF8A3D" { willSet { objectWillChange.send() } }
+    @AppStorage("appearance.openWidth") var openWidth = 640.0 { willSet { objectWillChange.send() } }
+    @AppStorage("appearance.openHeight") var openHeight = 400.0 { willSet { objectWillChange.send() } }
+
+    // MARK: Layout
+    /// Comma-separated raw values of visible tabs (Home is always shown).
+    @AppStorage("layout.visibleTabs") var visibleTabsCSV = "Home,Shelf,Agents,Tools" { willSet { objectWillChange.send() } }
+    @AppStorage("layout.defaultTab") var defaultTabRaw = "Home" { willSet { objectWillChange.send() } }
+    /// "mediaCalendar" | "mediaOnly" | "calendarOnly"
+    @AppStorage("layout.homeLayout") var homeLayout = "mediaCalendar" { willSet { objectWillChange.send() } }
+
+    var accentColor: Color { Color(hex: accentHex) }
 
     // MARK: Live activities
     @AppStorage("mediaLiveActivity") var mediaLiveActivity = true { willSet { objectWillChange.send() } }

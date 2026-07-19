@@ -8,6 +8,11 @@ struct NotchRootView: View {
     @EnvironmentObject var settings: SettingsStore
     @ObservedObject private var music = MusicManager.shared
 
+    /// Top-corner flare radius of the closed shape. The closed content is
+    /// padded by this much per side so the shape's *body* (bounds minus the
+    /// flares) exactly covers the hardware cutout + wings.
+    private let closedFlareRadius: CGFloat = 8
+
     var body: some View {
         VStack(spacing: 0) {
             notch
@@ -18,15 +23,26 @@ struct NotchRootView: View {
         .ignoresSafeArea()
     }
 
-    private var currentSize: CGSize {
-        vm.state == .open ? vm.openSize : vm.closedSize
-    }
-
     private var notchShape: NotchShape {
         NotchShape(
-            topCornerRadius: vm.state == .open ? 12 : 8,
+            topCornerRadius: vm.state == .open ? 12 : closedFlareRadius,
             bottomCornerRadius: vm.state == .open ? settings.openCornerRadius : 13
         )
+    }
+
+    private var backgroundFill: AnyShapeStyle {
+        switch settings.backgroundStyle {
+        case "gradient":
+            return AnyShapeStyle(LinearGradient(
+                colors: [Color(hex: settings.gradientStartHex), Color(hex: settings.gradientEndHex)],
+                startPoint: .top, endPoint: .bottom))
+        case "artwork":
+            return AnyShapeStyle(LinearGradient(
+                colors: [music.artworkTint.opacity(0.45), .black],
+                startPoint: .top, endPoint: .bottom))
+        default:
+            return AnyShapeStyle(Color.black)
+        }
     }
 
     private var notch: some View {
@@ -37,16 +53,26 @@ struct NotchRootView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .top)))
             } else {
                 ClosedNotchView()
+                    .frame(height: vm.geometry.notchSize.height)
+                    .padding(.horizontal, closedFlareRadius)
+                    .fixedSize()
                     .transition(.opacity)
             }
         }
-        .frame(width: currentSize.width, height: currentSize.height)
         .background(
             notchShape
-                .fill(.black)
+                .fill(backgroundFill)
                 .shadow(color: .black.opacity(vm.state == .open ? 0.6 : 0), radius: 14, y: 6)
         )
         .clipShape(notchShape)
+        .overlay {
+            if settings.showBorderGlow {
+                notchShape
+                    .stroke(settings.accentColor.opacity(0.55), lineWidth: 1)
+                    .shadow(color: settings.accentColor.opacity(0.5), radius: 5)
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(
             // Seal the seam against the physical notch.
             Rectangle().fill(.black).frame(height: 1),

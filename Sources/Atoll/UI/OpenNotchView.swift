@@ -7,7 +7,14 @@ extension Notification.Name {
 /// The expanded notch hub: tab bar + active feature pane.
 struct OpenNotchView: View {
     @EnvironmentObject var vm: NotchViewModel
+    @EnvironmentObject var settings: SettingsStore
     @ObservedObject private var agents = AgentSessionStore.shared
+
+    private var visibleTabs: [NotchTab] {
+        let names = Set(settings.visibleTabsCSV.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) })
+        let tabs = NotchTab.allCases.filter { $0 == .home || names.contains($0.rawValue) }
+        return tabs.isEmpty ? [.home] : tabs
+    }
 
     enum ToolPane: String, CaseIterable, Identifiable {
         case timers = "Timers"
@@ -47,7 +54,7 @@ struct OpenNotchView: View {
 
     private var tabBar: some View {
         HStack(spacing: 5) {
-            ForEach(NotchTab.allCases) { tab in
+            ForEach(visibleTabs) { tab in
                 tabButton(tab)
             }
             Spacer()
@@ -57,7 +64,7 @@ struct OpenNotchView: View {
             } label: {
                 Image(systemName: vm.isPinned ? "pin.fill" : "pin")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(vm.isPinned ? Color.orange : Color.white.opacity(0.55))
+                    .foregroundStyle(vm.isPinned ? settings.accentColor : Color.white.opacity(0.55))
                     .frame(width: 24, height: 22)
                     .background(RoundedRectangle(cornerRadius: 6).fill(Color.white.opacity(vm.isPinned ? 0.12 : 0)))
             }
@@ -112,13 +119,22 @@ struct OpenNotchView: View {
     private var content: some View {
         switch vm.tab {
         case .home:
-            HStack(spacing: 10) {
+            switch settings.homeLayout {
+            case "mediaOnly":
                 MediaPlayerCard()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            case "calendarOnly":
                 CalendarWidgetView()
-                    .frame(width: 232)
-                    .frame(maxHeight: .infinity)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            default:
+                HStack(spacing: 10) {
+                    MediaPlayerCard()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    CalendarWidgetView()
+                        .frame(width: 232)
+                        .frame(maxHeight: .infinity)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+                }
             }
         case .shelf:
             ShelfView()

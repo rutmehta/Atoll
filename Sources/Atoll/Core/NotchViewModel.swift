@@ -37,8 +37,10 @@ final class NotchViewModel: ObservableObject {
 
     let settings: SettingsStore
 
-    /// Size of the expanded notch content.
-    var openSize: CGSize { CGSize(width: 640, height: 400) }
+    /// Size of the expanded notch content (user-adjustable).
+    var openSize: CGSize {
+        CGSize(width: max(480, settings.openWidth), height: max(300, settings.openHeight))
+    }
     /// Measured widths of the live-activity "wings" flanking the closed notch.
     /// Updated by ClosedNotchView via preference keys.
     @Published var leftWingWidth: CGFloat = 0

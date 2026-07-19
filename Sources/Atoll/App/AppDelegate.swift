@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupStatusItem()
         startManagers()
         wireIntegrations()
+        setupDebugChannel()
 
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
@@ -110,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // an actual change (slider drags fire this constantly).
         var displayConfig = (SettingsStore.shared.showOnAllDisplays,
                              SettingsStore.shared.fakeNotchOnExternalDisplays)
+        var openSizeConfig = (SettingsStore.shared.openWidth, SettingsStore.shared.openHeight)
         SettingsStore.shared.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -119,6 +121,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if current != displayConfig {
                     displayConfig = current
                     self.rebuildControllers()
+                }
+                let size = (SettingsStore.shared.openWidth, SettingsStore.shared.openHeight)
+                if size != openSizeConfig {
+                    openSizeConfig = size
+                    self.controllers.forEach { $0.refreshGeometry() }
                 }
             }
             .store(in: &cancellables)
@@ -142,6 +149,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] in
             self?.primaryController()?.viewModel.toggle()
         }
+        if toggleHotKey == nil {
+            NSLog("Atoll: global hotkey ⌥⌘N registration failed (conflict with another app?)")
+        }
     }
 
     // MARK: Controllers
@@ -164,12 +174,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         controllers = screens.map { screen in
             let controller = NotchController(screen: screen, settings: settings)
+            controller.viewModel.tab = NotchTab(rawValue: settings.defaultTabRaw) ?? .home
             controller.viewModel.onStateChange = { state in
                 if state == .closed {
                     MirrorManager.shared.notchDidClose()
                 }
             }
             return controller
+        }
+    }
+
+    // MARK: Debug remote control
+
+    /// Local-only automation channel for development, gated behind
+    /// `defaults write com.rutmehta.atoll debug.remoteControl -bool YES`.
+    /// Commands (posted as the distributed notification's object string):
+    /// "open", "open:Home|Shelf|Agents|Tools", "close", "snapshot:/path.png".
+    private func setupDebugChannel() {
+        guard UserDefaults.standard.bool(forKey: "debug.remoteControl") else { return }
+        DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("com.rutmehta.atoll.debug"),
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            let command = note.object as? String ?? ""
+            Task { @MainActor [weak self] in
+                self?.handleDebugCommand(command)
+            }
+        }
+    }
+
+    private func handleDebugCommand(_ command: String) {
+        guard let controller = controllers.first else { return }
+        if command == "open" {
+            controller.viewModel.open()
+        } else if command.hasPrefix("open:") {
+            let raw = String(command.dropFirst("open:".count))
+            controller.viewModel.open(tab: NotchTab(rawValue: raw))
+        } else if command == "close" {
+            controller.viewModel.close()
+        } else if command.hasPrefix("snapshot:") {
+            let path = String(command.dropFirst("snapshot:".count))
+            guard let view = controller.panel.contentView,
+                  let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?
+                .write(to: URL(fileURLWithPath: path))
         }
     }
 

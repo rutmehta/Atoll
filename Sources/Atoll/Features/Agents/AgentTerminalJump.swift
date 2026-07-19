@@ -26,6 +26,11 @@ enum AgentTerminalJump {
         "com.todesktop.230313mzl4w4u92", // Cursor
         "com.exafunction.windsurf",
         "dev.zed.Zed",
+        // Desktop apps hosting embedded agent sessions (Claude Code inside
+        // Claude Desktop; Codex desktop). Jump activates the app; notification
+        // muting treats them like terminals when frontmost.
+        "com.anthropic.claudefordesktop",
+        "com.openai.codex",
     ]
 
     /// Prefix matches (JetBrains IDE family ships many bundle ids).
