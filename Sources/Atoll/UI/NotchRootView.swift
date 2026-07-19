@@ -69,14 +69,16 @@ struct NotchRootView: View {
         )
         .clipShape(notchShape)
         .overlay {
-            // Glow only when open — a ring around the closed sliver reads as a
-            // misplaced outline against the hardware notch.
-            if settings.showBorderGlow, vm.state == .open {
-                notchShape
-                    .stroke(settings.accentColor.opacity(0.55), lineWidth: 1)
-                    .shadow(color: settings.accentColor.opacity(0.5), radius: 5)
-                    .allowsHitTesting(false)
-            }
+            // Glow only when open — and always present in the hierarchy with
+            // stable identity, faded via opacity. Conditionally INSERTING the
+            // stroke would lay it out at the final open bounds instantly while
+            // the shape is still morphing (it would have no prior geometry to
+            // interpolate from).
+            notchShape
+                .stroke(settings.accentColor.opacity(0.55), lineWidth: 1)
+                .shadow(color: settings.accentColor.opacity(0.5), radius: 5)
+                .opacity(settings.showBorderGlow && vm.state == .open ? 1 : 0)
+                .allowsHitTesting(false)
         }
         .overlay(
             // Seal the seam against the physical notch.
