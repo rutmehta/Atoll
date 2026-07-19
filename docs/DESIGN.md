@@ -1,8 +1,8 @@
-# AgentNook — Design & Module Contract
+# Atoll — Design & Module Contract
 
 Open-source NotchNook replica + Claude Code / Codex session monitoring (Notchi-style).
 SPM executable target, macOS 14+, Swift 5 language mode, unsandboxed, bundled via
-`scripts/build-app.sh` into `dist/AgentNook.app`.
+`scripts/build-app.sh` into `dist/Atoll.app`.
 
 Research inputs live in `docs/research/` — **read the file(s) relevant to your module
 before implementing**:
@@ -25,7 +25,7 @@ before implementing**:
 
 ## Module rules (for implementation agents)
 
-1. Create files **only** under your assigned directory `Sources/AgentNook/Features/<Module>/`.
+1. Create files **only** under your assigned directory `Sources/Atoll/Features/<Module>/`.
 2. Do **not** modify `Package.swift`, `Core/*`, `UI/*`, `App/*`, `scripts/*`, or another
    module's directory. The integrator wires everything afterward.
 3. Expose: one or more `ObservableObject` managers (singleton `static let shared` where it
@@ -33,10 +33,10 @@ before implementing**:
    another feature module.
 4. Feature-specific settings: use `@AppStorage` keys (prefix them, e.g. `"shelf.autoRemove"`)
    inside your module, plus a `<Module>SettingsView` the integrator adds to the settings window.
-5. Write `Sources/AgentNook/Features/<Module>/INTEGRATION.md` describing exactly: view names +
+5. Write `Sources/Atoll/Features/<Module>/INTEGRATION.md` describing exactly: view names +
    intended placement (which tab / closed-notch wing / HUD overlay), manager start-up calls the
    app must make at launch, settings view name, and required Info.plist keys or permissions.
-6. Your code must compile: run `swift build --package-path /Users/rutmehta/Developer/AgentNook`
+6. Your code must compile: run `swift build --package-path /Users/rutmehta/Developer/Atoll`
    and fix errors before finishing. Do not run git commands. Language mode is Swift 5 —
    avoid strict-concurrency-only idioms; annotate UI-facing classes `@MainActor` as needed.
 7. Closed-notch live activities: provide a compact SwiftUI view designed for a wing next to
@@ -57,7 +57,7 @@ before implementing**:
 | `Features/ShortcutsRunner` | macOS Shortcuts widget: list via `shortcuts list` CLI, run via `shortcuts run <name>` (Process), favorites, running indicator |
 | `Features/HUD` | Media-key CGEventTap (swallow volume/brightness/mute when enabled + Accessibility granted), CoreAudio `VolumeManager` (read/write/listeners), `BrightnessManager` (DisplayServices via dlopen), `SneakPeekCoordinator.shared` (type/value/visible, 1.5 s auto-hide), inline closed-notch HUD view (icon left, bridge over notch, draggable progress right), AX permission prompt flow |
 | `Features/SystemEvents` | Battery via IOPSNotification (charging/unplugged/full/low + low-power mode) → live-activity events + battery wing view; Bluetooth connect/disconnect via IOBluetooth notifications |
-| `Features/Agents` | THE flagship. Socket server (`/tmp/agentnook.sock`), hook installer (opt-in UI button; idempotent upsert of `~/.claude/settings.json` hooks + `~/.codex/hooks.json`; uninstaller prunes only ours), hook shell script (bash+python3, event→status map, PID ancestry capture, blocking PermissionRequest reply ≤290 s), session store + state machine (idle/working/waitingForInput/permissionRequest/compacting/ended), transcript tailing (Claude JSONL + Codex rollout, incremental offsets), Codex liveness `kill(pid,0)`, jump-to-terminal (proc ancestry → NSRunningApplication.activate, terminal allowlist), notifications (UNUserNotificationCenter, mute when terminal frontmost) |
+| `Features/Agents` | THE flagship. Socket server (`/tmp/atoll.sock`), hook installer (opt-in UI button; idempotent upsert of `~/.claude/settings.json` hooks + `~/.codex/hooks.json`; uninstaller prunes only ours), hook shell script (bash+python3, event→status map, PID ancestry capture, blocking PermissionRequest reply ≤290 s), session store + state machine (idle/working/waitingForInput/permissionRequest/compacting/ended), transcript tailing (Claude JSONL + Codex rollout, incremental offsets), Codex liveness `kill(pid,0)`, jump-to-terminal (proc ancestry → NSRunningApplication.activate, terminal allowlist), notifications (UNUserNotificationCenter, mute when terminal frontmost) |
 | `Features/AgentsUI` | Session list rows (state dot/spinner, project #N, permission-mode badge, last message), live activity feed (tool events running/success/error + assistant messages), permission approval card (tool + input summary, Allow / Allow&remember / Deny buttons, number-key shortcuts, AskUserQuestion options + free text), usage quota manager (Claude keychain OAuth token via `/usr/bin/security find-generic-password -s "Claude Code-credentials" -w` → `GET api.anthropic.com/api/oauth/usage` with `anthropic-beta: oauth-2025-04-20` AND `User-Agent: claude-code/2.0`; Codex `~/.codex/auth.json` JWT → `chatgpt.com/backend-api/wham/usage`), usage bars (green<50/amber<80/red≥80, "Resets in Xh Ym"), 30-day cost dashboard (incremental JSONL scan with per-file offset cache, models.dev pricing + bundled fallback), closed-notch wing (one dot per live session, color = state, pulse on needs-attention) |
 
 `Features/Agents` ↔ `Features/AgentsUI` may share types: AgentsUI may `import` nothing extra but

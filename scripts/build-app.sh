@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds AgentNook.app into dist/ from the SPM executable target.
+# Builds Atoll.app into dist/ from the SPM executable target.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -7,11 +7,11 @@ CONFIG="${1:-release}"
 swift build -c "$CONFIG"
 
 BUILD=".build/$CONFIG"
-APP="dist/AgentNook.app"
+APP="dist/Atoll.app"
 
 rm -rf dist
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
-cp "$BUILD/AgentNook" "$APP/Contents/MacOS/AgentNook"
+cp "$BUILD/Atoll" "$APP/Contents/MacOS/Atoll"
 cp Resources/Info.plist "$APP/Contents/"
 
 # SPM resource bundles must sit in Contents/Resources for Bundle.module to resolve.
@@ -26,7 +26,7 @@ for dylib in "$BUILD"/*.dylib; do
 done
 shopt -u nullglob
 /usr/bin/install_name_tool -add_rpath "@executable_path/../Frameworks" \
-  "$APP/Contents/MacOS/AgentNook" 2>/dev/null || true
+  "$APP/Contents/MacOS/Atoll" 2>/dev/null || true
 
 if [ -f Resources/AppIcon.icns ]; then
   cp Resources/AppIcon.icns "$APP/Contents/Resources/"

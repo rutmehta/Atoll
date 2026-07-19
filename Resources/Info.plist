@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>AgentNook</string>
+	<string>Atoll</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.rutmehta.agentnook</string>
+	<string>com.rutmehta.atoll</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>AgentNook</string>
+	<string>Atoll</string>
 	<key>CFBundleDisplayName</key>
-	<string>AgentNook</string>
+	<string>Atoll</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,17 +27,17 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>AgentNook uses the camera for the notch mirror.</string>
+	<string>Atoll uses the camera for the notch mirror.</string>
 	<key>NSCameraUseContinuityCameraDeviceType</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>AgentNook shows a notch notification when Bluetooth devices connect or disconnect.</string>
+	<string>Atoll shows a notch notification when Bluetooth devices connect or disconnect.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>AgentNook shows your upcoming events in the notch.</string>
+	<string>Atoll shows your upcoming events in the notch.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>AgentNook uses your location for local weather.</string>
+	<string>Atoll uses your location for local weather.</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>AgentNook controls Music and Spotify playback.</string>
+	<string>Atoll controls Music and Spotify playback.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>

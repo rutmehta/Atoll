@@ -1,6 +1,6 @@
-# AgentNook
+# Atoll
 
-**The MacBook notch, upgraded twice.** AgentNook is an open-source macOS notch hub that
+**The MacBook notch, upgraded twice.** Atoll is an open-source macOS notch hub that
 replicates the full NotchNook feature set — and then goes further by putting your live
 **Claude Code and Codex sessions** in the notch, Notchi-style: watch agents work, get
 pinged when they need you, and approve tool permissions without switching to the terminal.
@@ -46,15 +46,15 @@ pinged when they need you, and approve tool permissions without switching to the
 
 How it works: an opt-in hook install (Settings → Agents → *Install hooks*) registers a tiny
 shell hook in `~/.claude/settings.json` and `~/.codex/hooks.json` that streams session events
-to a local Unix socket (`/tmp/agentnook.sock`). Transcript tailing fills in the rest. The
-hook exits instantly when AgentNook isn't running — zero overhead. Uninstall removes only
-AgentNook's entries.
+to a local Unix socket (`/tmp/atoll.sock`). Transcript tailing fills in the rest. The
+hook exits instantly when Atoll isn't running — zero overhead. Uninstall removes only
+Atoll's entries.
 
 ## Build & run
 
 ```bash
-./scripts/build-app.sh          # → dist/AgentNook.app
-open dist/AgentNook.app
+./scripts/build-app.sh          # → dist/Atoll.app
+open dist/Atoll.app
 ```
 
 Requires Xcode (or CLT) with Swift 6 toolchain. The app is ad-hoc signed; permissions
@@ -71,7 +71,7 @@ with sandboxing.
 ## Architecture
 
 ```
-Sources/AgentNook/
+Sources/Atoll/
   App/        entry point, app delegate, status item, settings window
   Core/       notch geometry, NSPanel host, view model, settings store
   UI/         notch shape, root/open/closed views, settings root
@@ -93,7 +93,7 @@ boring.notch techniques, macOS API recipes) live in [docs/](docs/).
   [ejbills Swift package fork](https://github.com/ejbills/mediaremote-adapter)) — now-playing
   access on modern macOS.
 
-AgentNook is a clean-room reimplementation informed by public documentation and
+Atoll is a clean-room reimplementation informed by public documentation and
 open-source references; it bundles no NotchNook assets or code.
 
 ## License
