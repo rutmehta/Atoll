@@ -108,8 +108,12 @@ struct ClosedNotchView: View {
                 if settings.agentsLiveActivity {
                     AgentsClosedWingView(onTap: { vm.open(tab: .agents) })
                 }
-                CalendarNextEventWing()
-                TodoCountWing()
+                if settings.calendarLiveActivity {
+                    CalendarNextEventWing()
+                }
+                if settings.todosLiveActivity {
+                    TodoCountWing()
+                }
             }
             .padding(.leading, 3)
             .padding(.trailing, hasAnyRightContent ? 8 : 0)

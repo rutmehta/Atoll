@@ -7,6 +7,10 @@ import SwiftUI
 struct MediaPlayerCard: View {
     @ObservedObject private var manager = MusicManager.shared
 
+    /// Artwork edge length — the integrator passes a smaller value when the
+    /// open nook is sized compact.
+    var artworkSize: CGFloat = 152
+
     var body: some View {
         Group {
             if !manager.mediaEnabled {
@@ -77,7 +81,7 @@ struct MediaPlayerCard: View {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: 152, height: 152)
+                    .frame(width: artworkSize, height: artworkSize)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .shadow(color: manager.artworkTint.opacity(0.5), radius: 24, y: 2)
                     .overlay(
@@ -87,7 +91,7 @@ struct MediaPlayerCard: View {
             } else {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.white.opacity(0.08))
-                    .frame(width: 152, height: 152)
+                    .frame(width: artworkSize, height: artworkSize)
                     .overlay(
                         Image(systemName: "music.note")
                             .font(.system(size: 40, weight: .light))

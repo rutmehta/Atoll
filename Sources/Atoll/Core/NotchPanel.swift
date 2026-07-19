@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 /// Borderless, non-activating panel that floats over the notch on every space,
@@ -22,6 +23,7 @@ final class NotchController: NSObject {
     let viewModel: NotchViewModel
     private let screen: NSScreen
     private var clickOutsideMonitor: Any?
+    private var settingsCancellable: AnyCancellable?
 
     /// Margin around the open content so shadows aren't clipped.
     private let framePadding: CGFloat = 60
@@ -65,6 +67,18 @@ final class NotchController: NSObject {
         applyFrame()
         panel.orderFrontRegardless()
 
+        // The open size is user-adjustable — keep the window frame in sync.
+        // objectWillChange fires in willSet, so hop a runloop before reading.
+        settingsCancellable = settings.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                let size = self.viewModel.openSize
+                if size != self.lastAppliedOpenSize {
+                    self.applyFrame()
+                }
+            }
+
         clickOutsideMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.viewModel.state == .open, !self.viewModel.isPinned else { return }
@@ -90,11 +104,15 @@ final class NotchController: NSObject {
         panel.orderOut(nil)
     }
 
+    private var lastAppliedOpenSize: CGSize = .zero
+
     private func applyFrame() {
         let geometry = viewModel.geometry
+        let openSize = viewModel.openSize
+        lastAppliedOpenSize = openSize
         let size = CGSize(
-            width: max(viewModel.openSize.width, viewModel.closedSize.width) + framePadding * 2,
-            height: viewModel.openSize.height + framePadding
+            width: max(openSize.width, viewModel.closedSize.width) + framePadding * 2,
+            height: openSize.height + framePadding
         )
         let frame = CGRect(
             x: geometry.screenFrame.midX - size.width / 2,

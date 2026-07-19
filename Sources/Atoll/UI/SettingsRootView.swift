@@ -224,6 +224,8 @@ struct LiveActivitySettingsView: View {
                 Toggle("Timers", isOn: $settings.timerLiveActivity)
                 Toggle("Battery & charging", isOn: $settings.batteryLiveActivity)
                 Toggle("Agent sessions", isOn: $settings.agentsLiveActivity)
+                Toggle("Upcoming calendar event", isOn: $settings.calendarLiveActivity)
+                Toggle("Open to-dos count", isOn: $settings.todosLiveActivity)
             }
         }
         .formStyle(.grouped)

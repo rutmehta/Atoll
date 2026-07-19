@@ -31,6 +31,9 @@ struct NotchRootView: View {
     }
 
     private var backgroundFill: AnyShapeStyle {
+        // Closed = always pure black: the shape merges with the hardware notch,
+        // and any gradient visibly "breaks" across the cutout.
+        guard vm.state == .open else { return AnyShapeStyle(Color.black) }
         switch settings.backgroundStyle {
         case "gradient":
             return AnyShapeStyle(LinearGradient(
@@ -66,7 +69,9 @@ struct NotchRootView: View {
         )
         .clipShape(notchShape)
         .overlay {
-            if settings.showBorderGlow {
+            // Glow only when open — a ring around the closed sliver reads as a
+            // misplaced outline against the hardware notch.
+            if settings.showBorderGlow, vm.state == .open {
                 notchShape
                     .stroke(settings.accentColor.opacity(0.55), lineWidth: 1)
                     .shadow(color: settings.accentColor.opacity(0.5), radius: 5)

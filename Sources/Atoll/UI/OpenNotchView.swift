@@ -119,21 +119,30 @@ struct OpenNotchView: View {
     private var content: some View {
         switch vm.tab {
         case .home:
+            // Adapt to the user-configured nook size: below ~600 pt there is no
+            // room for the calendar column, and the artwork scales down.
+            let compact = vm.openSize.width < 600
+            let artworkSize: CGFloat = compact ? 118 : 152
             switch settings.homeLayout {
             case "mediaOnly":
-                MediaPlayerCard()
+                MediaPlayerCard(artworkSize: artworkSize)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case "calendarOnly":
                 CalendarWidgetView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             default:
-                HStack(spacing: 10) {
-                    MediaPlayerCard()
+                if compact {
+                    MediaPlayerCard(artworkSize: artworkSize)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    CalendarWidgetView()
-                        .frame(width: 232)
-                        .frame(maxHeight: .infinity)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+                } else {
+                    HStack(spacing: 10) {
+                        MediaPlayerCard(artworkSize: artworkSize)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        CalendarWidgetView()
+                            .frame(width: 232)
+                            .frame(maxHeight: .infinity)
+                            .background(RoundedRectangle(cornerRadius: 12).fill(Color.white.opacity(0.05)))
+                    }
                 }
             }
         case .shelf:

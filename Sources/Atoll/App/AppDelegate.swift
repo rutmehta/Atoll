@@ -121,9 +121,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Display-related settings → rebuild the notch panels. objectWillChange
         // fires in willSet, so hop a runloop before reading, and only rebuild on
         // an actual change (slider drags fire this constantly).
+        // Open-size changes are handled inside each NotchController.
         var displayConfig = (SettingsStore.shared.showOnAllDisplays,
                              SettingsStore.shared.fakeNotchOnExternalDisplays)
-        var openSizeConfig = (SettingsStore.shared.openWidth, SettingsStore.shared.openHeight)
         SettingsStore.shared.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -133,11 +133,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if current != displayConfig {
                     displayConfig = current
                     self.rebuildControllers()
-                }
-                let size = (SettingsStore.shared.openWidth, SettingsStore.shared.openHeight)
-                if size != openSizeConfig {
-                    openSizeConfig = size
-                    self.controllers.forEach { $0.refreshGeometry() }
                 }
             }
             .store(in: &cancellables)
@@ -233,6 +228,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?
                 .write(to: URL(fileURLWithPath: path))
+        } else if command.hasPrefix("set:") {
+            // "set:openWidth:800" — writes through SettingsStore, exercising the
+            // exact same path as the settings sliders.
+            let parts = command.dropFirst("set:".count).split(separator: ":")
+            if parts.count == 2, let value = Double(parts[1]) {
+                switch parts[0] {
+                case "openWidth": SettingsStore.shared.openWidth = value
+                case "openHeight": SettingsStore.shared.openHeight = value
+                default: break
+                }
+            }
         } else if command == "axstatus" {
             try? (AXIsProcessTrusted() ? "trusted" : "untrusted")
                 .write(toFile: "/tmp/atoll-axstatus", atomically: true, encoding: .utf8)

@@ -10,31 +10,40 @@ import SwiftUI
 struct CalendarNextEventWing: View {
     @ObservedObject private var manager = CalendarManager.shared
 
-    var maxWidth: CGFloat = 150
+    /// Hard cap on the event-title width so the wing never sprawls across the
+    /// menu bar (`fixedSize` in the closed-notch container would otherwise let
+    /// long titles win over any frame cap).
+    var titleMaxWidth: CGFloat = 72
 
     var body: some View {
-        if let event = manager.nextEvent {
+        if let event = manager.nextEvent, isImminent(event) {
             HStack(spacing: 5) {
                 Capsule()
                     .fill(Color(nsColor: event.calendar?.color ?? .systemBlue))
                     .frame(width: 3, height: 13)
                 Text(timeText(for: event))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10.5, weight: .semibold))
                     .monospacedDigit()
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
-                    .layoutPriority(1)
+                    .fixedSize()
                 Text(event.title ?? "Event")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10.5))
                     .foregroundStyle(.white.opacity(0.55))
                     .lineLimit(1)
                     .truncationMode(.tail)
+                    .frame(maxWidth: titleMaxWidth, alignment: .leading)
             }
-            .padding(.horizontal, 6)
-            .frame(maxWidth: maxWidth, alignment: .leading)
-            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 4)
             .transition(.opacity.combined(with: .move(edge: .trailing)))
         }
+    }
+
+    /// Only surface the wing while an event is ongoing or starts within 45 min —
+    /// a persistent all-day "next event" banner just eats menu bar space.
+    private func isImminent(_ event: EKEvent) -> Bool {
+        guard let start = event.startDate else { return false }
+        return start.timeIntervalSinceNow < 45 * 60
     }
 
     private func timeText(for event: EKEvent) -> String {
