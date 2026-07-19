@@ -94,6 +94,11 @@ struct OpenNotchView: View {
                     .font(.system(size: 11, weight: .medium))
                 Text(tab.rawValue)
                     .font(.system(size: 11.5, weight: .medium))
+                if tab == .agents, agents.attention {
+                    Circle()
+                        .fill(Color.red)
+                        .frame(width: 4.5, height: 4.5)
+                }
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 4.5)
@@ -101,14 +106,6 @@ struct OpenNotchView: View {
                 RoundedRectangle(cornerRadius: 7)
                     .fill(vm.tab == tab ? Color.white.opacity(0.16) : .clear)
             )
-            .overlay(alignment: .topTrailing) {
-                if tab == .agents, agents.attention {
-                    Circle()
-                        .fill(Color.red)
-                        .frame(width: 5, height: 5)
-                        .offset(x: 1, y: -1)
-                }
-            }
         }
         .buttonStyle(.plain)
     }

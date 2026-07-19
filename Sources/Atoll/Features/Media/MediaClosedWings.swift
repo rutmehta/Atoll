@@ -50,12 +50,15 @@ struct MediaClosedWingRight: View {
     @ObservedObject private var manager = MusicManager.shared
 
     var body: some View {
+        // Only while actually playing — the paused stubs read as four mystery
+        // dots in the closed bar (the artwork thumbnail already says "media").
         if manager.mediaEnabled,
            manager.showVisualizer,
            let playback = manager.playback,
-           playback.hasContent {
+           playback.hasContent,
+           playback.isPlaying {
             MediaAudioVisualizer(
-                isPlaying: playback.isPlaying,
+                isPlaying: true,
                 tint: manager.artworkTint
             )
             .padding(.trailing, 9)

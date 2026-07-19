@@ -19,14 +19,14 @@ struct AgentsClosedWingView: View {
     var body: some View {
         let sessions = liveSessions
         if !sessions.isEmpty {
-            HStack(spacing: 4) {
-                ForEach(sessions.prefix(maxDots)) { session in
-                    AgentWingDot(state: session.state)
-                }
-                if sessions.count > maxDots {
-                    Text("+\(sessions.count - maxDots)")
-                        .font(.system(size: 8, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(Color(white: 0.6))
+            // A sparkle glyph reads as "AI agents"; a bare red dot beside the
+            // camera housing reads as a recording light.
+            HStack(spacing: 3) {
+                AgentWingGlyph(state: mostUrgentState(sessions))
+                if sessions.count > 1 {
+                    Text("\(sessions.count)")
+                        .font(.system(size: 9, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
                 }
             }
             .padding(.horizontal, 7)
@@ -38,6 +38,15 @@ struct AgentsClosedWingView: View {
         }
     }
 
+    private func mostUrgentState(_ sessions: [AgentSession]) -> AgentSessionState {
+        if let urgent = sessions.first(where: { $0.state.needsAttention })?.state { return urgent }
+        if let busy = sessions.first(where: { $0.state == .runningTool })?.state { return busy }
+        if let working = sessions.first(where: { $0.state == .working || $0.state == .compacting })?.state {
+            return working
+        }
+        return sessions.first?.state ?? .idle
+    }
+
     private func wingHelp(_ sessions: [AgentSession]) -> String {
         let attention = sessions.filter { $0.state.needsAttention }.count
         if attention > 0 {
@@ -47,23 +56,21 @@ struct AgentsClosedWingView: View {
     }
 }
 
-/// A single 5 pt state dot with a red pulse animation when attention is needed.
-private struct AgentWingDot: View {
+/// Sparkle glyph tinted by the aggregate session state; pulses (and gains a
+/// soft halo) when a session needs attention, breathes gently while working.
+private struct AgentWingGlyph: View {
     let state: AgentSessionState
 
     @State private var pulsing = false
 
     var body: some View {
         let color = AgentUIFormat.stateColor(state)
-        Circle()
-            .fill(color)
-            .frame(width: 5, height: 5)
-            .overlay(
-                Circle()
-                    .stroke(color.opacity(0.8), lineWidth: 1)
-                    .scaleEffect(pulsing ? 2.6 : 1)
-                    .opacity(pulsing ? 0 : 0.9)
-            )
+        Image(systemName: "sparkle")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(color)
+            .shadow(color: state.needsAttention ? color.opacity(0.8) : .clear, radius: 3)
+            .scaleEffect(pulsing ? 1.25 : 1)
+            .opacity(pulsing ? 1 : (state.needsAttention || state == .working || state == .runningTool ? 0.85 : 0.6))
             .onAppear { restart() }
             .onChange(of: state) { restart() }
     }
@@ -71,7 +78,7 @@ private struct AgentWingDot: View {
     private func restart() {
         pulsing = false
         guard state.needsAttention else { return }
-        withAnimation(.easeOut(duration: 1.0).repeatForever(autoreverses: false)) {
+        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
             pulsing = true
         }
     }

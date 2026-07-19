@@ -36,35 +36,40 @@ struct MediaPlayerCard: View {
     private func playerBody(_ playback: MediaPlaybackState) -> some View {
         // The info column is height-bounded so the whole block centers as one
         // unit in the (tall) card instead of stretching with dead space.
-        HStack(alignment: .center, spacing: 16) {
-            artwork(playback)
-            VStack(alignment: .leading, spacing: 4) {
-                sourceRow(playback)
-                MediaMarqueeText(
-                    text: playback.title.isEmpty ? "Unknown title" : playback.title,
-                    font: .system(size: 15, weight: .semibold),
-                    color: .white,
-                    height: 20
-                )
-                MediaMarqueeText(
-                    text: subtitle(playback),
-                    font: .system(size: 12),
-                    color: .white.opacity(0.6),
-                    height: 16
-                )
-                Spacer(minLength: 4)
-                MediaSeekBar(
-                    playback: playback,
-                    tint: manager.artworkTint,
-                    onSeek: { manager.seek(to: $0) }
-                )
-                transportRow(playback)
-                volumeRow
+        // The artwork adapts to the card's real width (it may share the tab
+        // with the calendar column) so the text column keeps room to breathe.
+        GeometryReader { geo in
+            let effectiveArtwork = min(artworkSize, max(96, geo.size.width - 250))
+            HStack(alignment: .center, spacing: geo.size.width < 430 ? 12 : 16) {
+                artwork(playback, size: effectiveArtwork)
+                VStack(alignment: .leading, spacing: 4) {
+                    sourceRow(playback)
+                    MediaMarqueeText(
+                        text: playback.title.isEmpty ? "Unknown title" : playback.title,
+                        font: .system(size: 15, weight: .semibold),
+                        color: .white,
+                        height: 20
+                    )
+                    MediaMarqueeText(
+                        text: subtitle(playback),
+                        font: .system(size: 12),
+                        color: .white.opacity(0.6),
+                        height: 16
+                    )
+                    Spacer(minLength: 4)
+                    MediaSeekBar(
+                        playback: playback,
+                        tint: manager.artworkTint,
+                        onSeek: { manager.seek(to: $0) }
+                    )
+                    transportRow(playback)
+                    volumeRow
+                }
+                .frame(height: 152)
             }
-            .frame(height: 152)
+            .padding(16)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func subtitle(_ playback: MediaPlaybackState) -> String {
@@ -75,13 +80,13 @@ struct MediaPlayerCard: View {
         return "\(playback.artist) — \(playback.album)"
     }
 
-    private func artwork(_ playback: MediaPlaybackState) -> some View {
+    private func artwork(_ playback: MediaPlaybackState, size: CGFloat) -> some View {
         ZStack {
             if let image = playback.artworkImage {
                 Image(nsImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: artworkSize, height: artworkSize)
+                    .frame(width: size, height: size)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .shadow(color: manager.artworkTint.opacity(0.5), radius: 24, y: 2)
                     .overlay(
@@ -91,7 +96,7 @@ struct MediaPlayerCard: View {
             } else {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(Color.white.opacity(0.08))
-                    .frame(width: artworkSize, height: artworkSize)
+                    .frame(width: size, height: size)
                     .overlay(
                         Image(systemName: "music.note")
                             .font(.system(size: 40, weight: .light))
