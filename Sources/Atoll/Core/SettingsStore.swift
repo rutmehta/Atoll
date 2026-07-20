@@ -12,7 +12,7 @@ final class SettingsStore: ObservableObject {
     // MARK: General
     @AppStorage("openOnHover") var openOnHover = true { willSet { objectWillChange.send() } }
     @AppStorage("hoverDelay") var hoverDelay = 0.1 { willSet { objectWillChange.send() } }
-    @AppStorage("showOnAllDisplays") var showOnAllDisplays = false { willSet { objectWillChange.send() } }
+    @AppStorage("showOnAllDisplays") var showOnAllDisplays = true { willSet { objectWillChange.send() } }
     @AppStorage("fakeNotchOnExternalDisplays") var fakeNotchOnExternalDisplays = true { willSet { objectWillChange.send() } }
     @AppStorage("hapticFeedback") var hapticFeedback = true { willSet { objectWillChange.send() } }
 

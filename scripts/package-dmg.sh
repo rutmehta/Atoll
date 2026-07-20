@@ -35,11 +35,12 @@ if [ -f Resources/AppIcon.icns ]; then
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist" 2>/dev/null || true
 fi
 
-# Ad-hoc signature. For Gatekeeper-clean distribution, set SIGN_IDENTITY to a
-# "Developer ID Application: …" cert and notarize the DMG afterwards.
-SIGN_IDENTITY="${SIGN_IDENTITY:--}"
-codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP" 2>/dev/null \
-  || codesign --force --deep --sign "$SIGN_IDENTITY" "$APP"
+# Ad-hoc signature WITHOUT hardened runtime: --options runtime enables library
+# validation, which rejects our bundled dylib on other machines ("different
+# Team IDs" dyld abort) because ad-hoc signatures carry no team. Hardened
+# runtime is only used in scripts/notarize.sh where a real Developer ID signs
+# every Mach-O with the same team.
+codesign --force --deep --sign - "$APP"
 
 echo "Archs: $(lipo -archs "$APP/Contents/MacOS/Atoll")"
 

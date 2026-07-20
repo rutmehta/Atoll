@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Atoll</string>
 	<key>CFBundleExecutable</key>
 	<string>Atoll</string>
 	<key>CFBundleIdentifier</key>
@@ -12,32 +14,30 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>Atoll</string>
-	<key>CFBundleDisplayName</key>
-	<string>Atoll</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.1.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
-	<key>NSHighResolutionCapable</key>
-	<true/>
-	<key>NSCameraUsageDescription</key>
-	<string>Atoll uses the camera for the notch mirror.</string>
-	<key>NSCameraUseContinuityCameraDeviceType</key>
-	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Atoll controls Music and Spotify playback.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Atoll shows a notch notification when Bluetooth devices connect or disconnect.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Atoll shows your upcoming events in the notch.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Atoll uses the camera for the notch mirror.</string>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Atoll uses your location for local weather.</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Atoll controls Music and Spotify playback.</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<false/>
 	<key>NSSupportsSuddenTermination</key>
