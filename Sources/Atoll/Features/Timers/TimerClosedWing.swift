@@ -11,6 +11,14 @@ struct TimerClosedWing: View {
     @ObservedObject private var manager = TimerManager.shared
     @State private var finishedPulse = false
 
+    private var pomodoroTint: Color {
+        switch manager.pomodoroPhase {
+        case .idle, .focus: return Color(red: 1.0, green: 0.36, blue: 0.30)
+        case .shortBreak: return .green
+        case .longBreak: return .mint
+        }
+    }
+
     var body: some View {
         if manager.isCountdownActive {
             HStack(spacing: 5) {
@@ -34,7 +42,36 @@ struct TimerClosedWing: View {
                     }
                 }
             }
+        } else if manager.isPomodoroActive {
+            HStack(spacing: 5) {
+                pomodoroRing
+                Text(TimersFormatting.countdown(manager.pomodoroRemaining))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(manager.pomodoroPaused ? .white.opacity(0.55) : .white)
+            }
+            .padding(.horizontal, 8)
+            .frame(maxHeight: .infinity)
         }
+    }
+
+    private var pomodoroRing: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.white.opacity(0.18), lineWidth: 2.5)
+            Circle()
+                .trim(from: 0, to: manager.pomodoroTotal > 0
+                      ? manager.pomodoroRemaining / manager.pomodoroTotal : 0)
+                .stroke(pomodoroTint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.5), value: manager.pomodoroRemaining)
+            if manager.pomodoroPaused {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: 6, weight: .bold))
+                    .foregroundStyle(pomodoroTint)
+            }
+        }
+        .frame(width: 14, height: 14)
     }
 
     private var finishedOpacity: Double {

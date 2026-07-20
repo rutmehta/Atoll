@@ -28,6 +28,18 @@ struct TimersSettingsView: View {
                 Toggle("Open the notch when a timer completes", isOn: $manager.autoOpenOnComplete)
             }
 
+            Section("Pomodoro") {
+                Stepper("Focus: \(manager.pomodoroFocusMinutes) min",
+                        value: $manager.pomodoroFocusMinutes, in: 5...90, step: 5)
+                Stepper("Short break: \(manager.pomodoroShortBreakMinutes) min",
+                        value: $manager.pomodoroShortBreakMinutes, in: 1...30)
+                Stepper("Long break: \(manager.pomodoroLongBreakMinutes) min",
+                        value: $manager.pomodoroLongBreakMinutes, in: 5...60, step: 5)
+                Stepper("Sessions before long break: \(manager.pomodoroSessionsPerCycle)",
+                        value: $manager.pomodoroSessionsPerCycle, in: 2...8)
+                Toggle("Start next phase automatically", isOn: $manager.pomodoroAutoAdvance)
+            }
+
             Section("Notifications") {
                 notificationRow
             }

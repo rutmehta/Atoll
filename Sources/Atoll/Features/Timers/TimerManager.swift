@@ -45,6 +45,31 @@ final class TimerManager: ObservableObject {
     /// Newest lap first.
     @Published private(set) var laps: [TimerLap] = []
 
+    // MARK: Pomodoro
+
+    enum PomodoroPhase: String {
+        case idle
+        case focus
+        case shortBreak
+        case longBreak
+
+        var label: String {
+            switch self {
+            case .idle: return "Pomodoro"
+            case .focus: return "Focus"
+            case .shortBreak: return "Break"
+            case .longBreak: return "Long Break"
+            }
+        }
+    }
+
+    @Published private(set) var pomodoroPhase: PomodoroPhase = .idle
+    @Published private(set) var pomodoroPaused = false
+    @Published private(set) var pomodoroRemaining: TimeInterval = 0
+    @Published private(set) var pomodoroTotal: TimeInterval = 0
+    /// Focus sessions completed in the current cycle (0..<sessionsPerCycle).
+    @Published private(set) var pomodoroCompletedFocus = 0
+
     @Published private(set) var notificationAuthStatus: UNAuthorizationStatus = .notDetermined
 
     /// Called when a countdown completes while the auto-open setting is on.
@@ -62,6 +87,21 @@ final class TimerManager: ObservableObject {
     @AppStorage("timers.autoOpenOnComplete") var autoOpenOnComplete = true {
         willSet { objectWillChange.send() }
     }
+    @AppStorage("timers.pomodoroFocusMinutes") var pomodoroFocusMinutes = 25 {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("timers.pomodoroShortBreakMinutes") var pomodoroShortBreakMinutes = 5 {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("timers.pomodoroLongBreakMinutes") var pomodoroLongBreakMinutes = 15 {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("timers.pomodoroSessionsPerCycle") var pomodoroSessionsPerCycle = 4 {
+        willSet { objectWillChange.send() }
+    }
+    @AppStorage("timers.pomodoroAutoAdvance") var pomodoroAutoAdvance = true {
+        willSet { objectWillChange.send() }
+    }
 
     // MARK: - Persistence anchors (@AppStorage)
 
@@ -73,21 +113,31 @@ final class TimerManager: ObservableObject {
     @AppStorage("timers.pausedRemaining") private var storedPausedRemaining: Double = 0
     /// Last duration the user configured in the picker.
     @AppStorage("timers.configuredDuration") private var storedConfiguredDuration: Double = 300
+    /// Pomodoro persistence: phase raw value ("idle" when inactive).
+    @AppStorage("timers.pomodoroPhase") private var storedPomodoroPhase = "idle"
+    @AppStorage("timers.pomodoroEndEpoch") private var storedPomodoroEndEpoch: Double = 0
+    @AppStorage("timers.pomodoroPausedRemaining") private var storedPomodoroPausedRemaining: Double = 0
+    @AppStorage("timers.pomodoroTotal") private var storedPomodoroTotal: Double = 0
+    @AppStorage("timers.pomodoroCompletedFocus") private var storedPomodoroCompletedFocus = 0
 
     // MARK: - Private state
 
     private var countdownEndDate: Date?
+    private var pomodoroEndDate: Date?
     private var tickTimer: Timer?
     private var completionTimer: Timer?
+    private var pomodoroCompletionTimer: Timer?
     private var finishResetTask: Task<Void, Never>?
     private var stopwatchStartDate: Date?
     private var stopwatchAccumulated: TimeInterval = 0
     private var playingSound: NSSound?
 
     private let notificationIdentifier = "atoll.timers.countdown"
+    private let pomodoroNotificationIdentifier = "atoll.timers.pomodoro"
 
     private init() {
         restorePersistedCountdown()
+        restorePersistedPomodoro()
     }
 
     // MARK: - Configured duration (picker binding surface)
@@ -230,6 +280,146 @@ final class TimerManager: ObservableObject {
         return stopwatchAccumulated
     }
 
+    // MARK: - Pomodoro controls
+
+    var isPomodoroActive: Bool { pomodoroPhase != .idle }
+    var isPomodoroRunning: Bool { isPomodoroActive && !pomodoroPaused }
+
+    var pomodoroProgress: Double {
+        guard pomodoroTotal > 0 else { return 0 }
+        return min(1, max(0, 1 - pomodoroRemaining / pomodoroTotal))
+    }
+
+    private func pomodoroDuration(for phase: PomodoroPhase) -> TimeInterval {
+        switch phase {
+        case .idle: return 0
+        case .focus: return TimeInterval(max(1, pomodoroFocusMinutes) * 60)
+        case .shortBreak: return TimeInterval(max(1, pomodoroShortBreakMinutes) * 60)
+        case .longBreak: return TimeInterval(max(1, pomodoroLongBreakMinutes) * 60)
+        }
+    }
+
+    func startPomodoro() {
+        if pomodoroPhase == .idle {
+            pomodoroCompletedFocus = 0
+            beginPomodoroPhase(.focus)
+        } else if pomodoroPaused {
+            resumePomodoro()
+        }
+    }
+
+    func pausePomodoro() {
+        guard isPomodoroRunning, let end = pomodoroEndDate else { return }
+        pomodoroRemaining = max(0, end.timeIntervalSinceNow)
+        pomodoroEndDate = nil
+        pomodoroPaused = true
+
+        storedPomodoroEndEpoch = 0
+        storedPomodoroPausedRemaining = pomodoroRemaining
+
+        pomodoroCompletionTimer?.invalidate()
+        pomodoroCompletionTimer = nil
+        removePendingNotification(pomodoroNotificationIdentifier)
+        updateTickTimer()
+    }
+
+    func resumePomodoro() {
+        guard isPomodoroActive, pomodoroPaused, pomodoroRemaining > 0 else { return }
+        let end = Date().addingTimeInterval(pomodoroRemaining)
+        pomodoroEndDate = end
+        pomodoroPaused = false
+
+        storedPomodoroEndEpoch = end.timeIntervalSince1970
+        storedPomodoroPausedRemaining = 0
+
+        schedulePomodoroCompletionTimer(at: end)
+        schedulePomodoroNotification()
+        updateTickTimer()
+    }
+
+    func resetPomodoro() {
+        pomodoroPhase = .idle
+        pomodoroPaused = false
+        pomodoroRemaining = 0
+        pomodoroTotal = 0
+        pomodoroCompletedFocus = 0
+        pomodoroEndDate = nil
+
+        clearPersistedPomodoro()
+        pomodoroCompletionTimer?.invalidate()
+        pomodoroCompletionTimer = nil
+        removePendingNotification(pomodoroNotificationIdentifier)
+        updateTickTimer()
+    }
+
+    /// Skip straight to the next phase (no sound — user-initiated).
+    func skipPomodoroPhase() {
+        guard isPomodoroActive else { return }
+        advancePomodoro(announce: false)
+    }
+
+    /// Remaining time computed against an arbitrary date (for TimelineView rendering).
+    func pomodoroRemaining(at date: Date) -> TimeInterval {
+        if isPomodoroRunning, let end = pomodoroEndDate {
+            return max(0, end.timeIntervalSince(date))
+        }
+        return pomodoroRemaining
+    }
+
+    private func beginPomodoroPhase(_ phase: PomodoroPhase, paused: Bool = false) {
+        let duration = pomodoroDuration(for: phase)
+        pomodoroPhase = phase
+        pomodoroTotal = duration
+        pomodoroRemaining = duration
+        pomodoroPaused = paused
+
+        storedPomodoroPhase = phase.rawValue
+        storedPomodoroTotal = duration
+        storedPomodoroCompletedFocus = pomodoroCompletedFocus
+
+        if paused {
+            pomodoroEndDate = nil
+            storedPomodoroEndEpoch = 0
+            storedPomodoroPausedRemaining = duration
+            pomodoroCompletionTimer?.invalidate()
+            pomodoroCompletionTimer = nil
+        } else {
+            let end = Date().addingTimeInterval(duration)
+            pomodoroEndDate = end
+            storedPomodoroEndEpoch = end.timeIntervalSince1970
+            storedPomodoroPausedRemaining = 0
+            schedulePomodoroCompletionTimer(at: end)
+            schedulePomodoroNotification()
+        }
+        updateTickTimer()
+    }
+
+    private func advancePomodoro(announce: Bool) {
+        let next: PomodoroPhase
+        if pomodoroPhase == .focus {
+            pomodoroCompletedFocus += 1
+            let cycle = max(1, pomodoroSessionsPerCycle)
+            next = pomodoroCompletedFocus % cycle == 0 ? .longBreak : .shortBreak
+        } else {
+            if pomodoroCompletedFocus >= max(1, pomodoroSessionsPerCycle) {
+                pomodoroCompletedFocus = 0
+            }
+            next = .focus
+        }
+        if announce {
+            playCompletionSound()
+        }
+        removePendingNotification(pomodoroNotificationIdentifier)
+        // Auto-advance starts the next phase running; otherwise it waits paused
+        // at the top of the next phase for an explicit resume.
+        beginPomodoroPhase(next, paused: !pomodoroAutoAdvance)
+    }
+
+    private func completePomodoroPhase() {
+        guard isPomodoroRunning else { return }
+        advancePomodoro(announce: true)
+    }
+
     // MARK: - Sounds
 
     func playCompletionSound() {
@@ -315,15 +505,51 @@ final class TimerManager: ObservableObject {
     }
 
     private func removePendingCompletionNotification() {
+        removePendingNotification(notificationIdentifier)
+    }
+
+    private func removePendingNotification(_ identifier: String) {
         guard notificationsAvailable else { return }
         UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [notificationIdentifier])
+            .removePendingNotificationRequests(withIdentifiers: [identifier])
+    }
+
+    /// Pre-scheduled banner for the current pomodoro phase's end.
+    private func schedulePomodoroNotification() {
+        guard notificationsAvailable else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            guard await self.ensureNotificationAuthorization() else { return }
+            guard self.isPomodoroRunning, let end = self.pomodoroEndDate else { return }
+            let interval = end.timeIntervalSinceNow
+            guard interval >= 1 else { return }
+
+            let content = UNMutableNotificationContent()
+            switch self.pomodoroPhase {
+            case .focus:
+                content.title = "Focus session done"
+                content.body = "Time for a break."
+            case .shortBreak, .longBreak:
+                content.title = "Break's over"
+                content.body = "Back to focus."
+            case .idle:
+                return
+            }
+            content.sound = nil
+
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false)
+            try? await UNUserNotificationCenter.current().add(UNNotificationRequest(
+                identifier: self.pomodoroNotificationIdentifier,
+                content: content,
+                trigger: trigger
+            ))
+        }
     }
 
     // MARK: - Tick engine
 
     private func updateTickTimer() {
-        let needed = countdownPhase == .running || stopwatchRunning
+        let needed = countdownPhase == .running || stopwatchRunning || isPomodoroRunning
         if needed {
             guard tickTimer == nil else { return }
             let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
@@ -350,6 +576,24 @@ final class TimerManager: ObservableObject {
         if stopwatchRunning {
             stopwatchElapsed = stopwatchElapsed(at: now)
         }
+        if isPomodoroRunning {
+            let remaining = pomodoroRemaining(at: now)
+            pomodoroRemaining = remaining
+            if remaining <= 0.01 {
+                completePomodoroPhase()
+            }
+        }
+    }
+
+    /// One-shot timer at the pomodoro phase boundary (same rationale as the
+    /// countdown's completion timer).
+    private func schedulePomodoroCompletionTimer(at endDate: Date) {
+        pomodoroCompletionTimer?.invalidate()
+        let timer = Timer(fire: endDate, interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        pomodoroCompletionTimer = timer
     }
 
     /// One-shot timer at the exact end date so completion isn't quantized to the
@@ -419,6 +663,42 @@ final class TimerManager: ObservableObject {
         storedEndDateEpoch = 0
         storedRunningTotal = 0
         storedPausedRemaining = 0
+    }
+
+    private func restorePersistedPomodoro() {
+        guard let phase = PomodoroPhase(rawValue: storedPomodoroPhase), phase != .idle else { return }
+        pomodoroPhase = phase
+        pomodoroCompletedFocus = storedPomodoroCompletedFocus
+        pomodoroTotal = storedPomodoroTotal
+
+        if storedPomodoroEndEpoch > 0 {
+            let end = Date(timeIntervalSince1970: storedPomodoroEndEpoch)
+            let remaining = end.timeIntervalSinceNow
+            if remaining > 0.5 {
+                pomodoroEndDate = end
+                pomodoroRemaining = remaining
+                pomodoroPaused = false
+                schedulePomodoroCompletionTimer(at: end)
+                updateTickTimer()
+            } else {
+                // Phase expired while we were away — advance silently and wait.
+                advancePomodoro(announce: false)
+                if !pomodoroPaused { pausePomodoro() }
+            }
+        } else if storedPomodoroPausedRemaining > 0 {
+            pomodoroRemaining = storedPomodoroPausedRemaining
+            pomodoroPaused = true
+        } else {
+            resetPomodoro()
+        }
+    }
+
+    private func clearPersistedPomodoro() {
+        storedPomodoroPhase = "idle"
+        storedPomodoroEndEpoch = 0
+        storedPomodoroPausedRemaining = 0
+        storedPomodoroTotal = 0
+        storedPomodoroCompletedFocus = 0
     }
 }
 
