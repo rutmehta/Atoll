@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import Combine
+import Sparkle
 import SwiftUI
 
 @MainActor
@@ -10,9 +11,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var toggleHotKey: GlobalHotKey?
     private var cancellables: Set<AnyCancellable> = []
+    /// Sparkle auto-updater (feed + key in Info.plist). Skipped for bare
+    /// `swift run` binaries, which have no bundle for Sparkle to update.
+    private var updaterController: SPUStandardUpdaterController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        if Bundle.main.bundleIdentifier != nil {
+            updaterController = SPUStandardUpdaterController(
+                startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+        }
         rebuildControllers()
         setupStatusItem()
         startManagers()
@@ -239,6 +247,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 default: break
                 }
             }
+        } else if command == "checkupdates" {
+            updaterController?.checkForUpdates(nil)
         } else if command == "axstatus" {
             try? (AXIsProcessTrusted() ? "trusted" : "untrusted")
                 .write(toFile: "/tmp/atoll-axstatus", atomically: true, encoding: .utf8)
@@ -304,6 +314,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(toggleItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ","))
+        if let updaterController {
+            let updateItem = NSMenuItem(
+                title: "Check for Updates…",
+                action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+                keyEquivalent: "")
+            updateItem.target = updaterController
+            menu.addItem(updateItem)
+        }
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Atoll", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         menu.items.forEach { $0.target = self }

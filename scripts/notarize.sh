@@ -41,6 +41,11 @@ for dylib in "$BUILD"/*.dylib; do
   cp "$dylib" "$APP/Contents/Frameworks/"
 done
 shopt -u nullglob
+shopt -s nullglob
+for fw in "$BUILD"/*.framework; do
+  cp -R "$fw" "$APP/Contents/Frameworks/"
+done
+shopt -u nullglob
 /usr/bin/install_name_tool -add_rpath "@executable_path/../Frameworks" \
   "$APP/Contents/MacOS/Atoll" 2>/dev/null || true
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
@@ -51,6 +56,16 @@ echo "Signing (hardened runtime)…"
 for dylib in "$APP/Contents/Frameworks/"*.dylib; do
   codesign --force --options runtime --timestamp --sign "$IDENTITY" "$dylib"
 done
+# Sparkle's nested executables, inside-out (per Sparkle's distribution docs).
+SPARKLE_FW="$APP/Contents/Frameworks/Sparkle.framework"
+if [ -d "$SPARKLE_FW" ]; then
+  for nested in "$SPARKLE_FW"/Versions/B/XPCServices/*.xpc \
+                "$SPARKLE_FW"/Versions/B/Autoupdate \
+                "$SPARKLE_FW"/Versions/B/Updater.app; do
+    [ -e "$nested" ] && codesign --force --options runtime --timestamp --sign "$IDENTITY" "$nested"
+  done
+  codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE_FW"
+fi
 codesign --force --options runtime --timestamp \
   --entitlements Resources/Atoll.entitlements \
   --sign "$IDENTITY" "$APP"

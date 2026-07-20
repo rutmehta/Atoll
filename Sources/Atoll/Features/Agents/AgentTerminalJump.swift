@@ -60,9 +60,59 @@ enum AgentTerminalJump {
             guard let url = URL(string: "codex://threads/\(session.sessionId)") else { return false }
             return NSWorkspace.shared.open(url)
         }
-        guard let pid = session.processID else { return false }
-        guard let app = hostTerminalApp(forProcess: pid) else { return false }
+        // Hook-reported sessions carry a PID; transcript-discovered ones don't —
+        // fall back to matching a running agent process by working directory.
+        let pid = session.processID
+            ?? locateProcess(provider: session.provider, cwd: session.cwd)
+        guard let pid, let app = hostTerminalApp(forProcess: pid) else { return false }
         return app.activate(options: [])
+    }
+
+    /// Find a running `claude`/`codex` process whose current working directory
+    /// matches the session's cwd. Lets jump-to-terminal work with zero setup
+    /// (no hooks installed). ~50 ms of `ps` on click; only runs when needed.
+    static func locateProcess(provider: AgentProvider, cwd: String) -> pid_t? {
+        guard !cwd.isEmpty else { return nil }
+        let ps = Process()
+        ps.executableURL = URL(fileURLWithPath: "/bin/ps")
+        ps.arguments = ["-axo", "pid=,command="]
+        let pipe = Pipe()
+        ps.standardOutput = pipe
+        ps.standardError = FileHandle.nullDevice
+        do { try ps.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        ps.waitUntilExit()
+        guard let output = String(data: data, encoding: .utf8) else { return nil }
+
+        let needle = provider == .claude ? "claude" : "codex"
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard let spaceIndex = trimmed.firstIndex(of: " "),
+                  let pid = pid_t(trimmed[..<spaceIndex]) else { continue }
+            let command = trimmed[trimmed.index(after: spaceIndex)...].lowercased()
+            guard command.contains(needle) else { continue }
+            // Skip app-bundle helper processes (Claude.app/Codex.app renderers);
+            // the CLI process is the one whose cwd is the project directory.
+            if command.contains(".app/contents/") { continue }
+            if currentWorkingDirectory(of: pid) == cwd { return pid }
+        }
+        return nil
+    }
+
+    /// Working directory via proc_pidinfo(PROC_PIDVNODEPATHINFO).
+    static func currentWorkingDirectory(of pid: pid_t) -> String? {
+        var info = proc_vnodepathinfo()
+        let size = Int32(MemoryLayout<proc_vnodepathinfo>.size)
+        let result = withUnsafeMutablePointer(to: &info) { ptr in
+            proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, ptr, size)
+        }
+        guard result == size else { return nil }
+        var path = info.pvi_cdir.vip_path
+        return withUnsafePointer(to: &path) { ptr in
+            ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                String(cString: $0)
+            }
+        }
     }
 
     /// Walk the ppid chain (≤12 hops) from `pid` looking for a running app whose

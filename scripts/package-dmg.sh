@@ -27,6 +27,11 @@ for dylib in "$BUILD"/*.dylib; do
   cp "$dylib" "$APP/Contents/Frameworks/"
 done
 shopt -u nullglob
+shopt -s nullglob
+for fw in "$BUILD"/*.framework; do
+  cp -R "$fw" "$APP/Contents/Frameworks/"
+done
+shopt -u nullglob
 /usr/bin/install_name_tool -add_rpath "@executable_path/../Frameworks" \
   "$APP/Contents/MacOS/Atoll" 2>/dev/null || true
 
