@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension Notification.Name {
-    static let agentNookOpenSettings = Notification.Name("Atoll.openSettings")
+    static let atollOpenSettings = Notification.Name("Atoll.openSettings")
 }
 
 /// The expanded notch hub: tab bar + active feature pane.
@@ -71,7 +71,7 @@ struct OpenNotchView: View {
             .buttonStyle(.plain)
             .help(vm.isPinned ? "Unpin the nook" : "Keep the nook open")
             Button {
-                NotificationCenter.default.post(name: .agentNookOpenSettings, object: nil)
+                NotificationCenter.default.post(name: .atollOpenSettings, object: nil)
             } label: {
                 Image(systemName: "gearshape")
                     .font(.system(size: 11, weight: .medium))

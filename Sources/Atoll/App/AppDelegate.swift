@@ -37,7 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         NotificationCenter.default.addObserver(
-            forName: .agentNookOpenSettings,
+            forName: .atollOpenSettings,
             object: nil,
             queue: .main
         ) { [weak self] _ in

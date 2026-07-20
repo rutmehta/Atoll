@@ -111,6 +111,13 @@ struct GeneralSettingsView: View {
                         settings.launchAtLogin = newValue
                     }
                 LabeledContent("Toggle shortcut", value: "⌥⌘N")
+                LabeledContent("Version",
+                               value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")
+                Button(role: .destructive) {
+                    NSApp.terminate(nil)
+                } label: {
+                    Label("Quit Atoll", systemImage: "power")
+                }
             }
         }
         .formStyle(.grouped)

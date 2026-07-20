@@ -106,6 +106,14 @@ struct NotchRootView: View {
         .onTapGesture {
             if vm.state == .closed { vm.open() }
         }
+        .contextMenu {
+            Button(vm.state == .open ? "Close Nook" : "Open Nook") { vm.toggle() }
+            Button("Settings…") {
+                NotificationCenter.default.post(name: .atollOpenSettings, object: nil)
+            }
+            Divider()
+            Button("Quit Atoll") { NSApp.terminate(nil) }
+        }
         .onDrop(
             of: [.fileURL, .url, .utf8PlainText, .plainText, .data],
             isTargeted: Binding(
