@@ -96,6 +96,33 @@ boring.notch techniques, macOS API recipes) live in [docs/](docs/).
 Atoll is a clean-room reimplementation informed by public documentation and
 open-source references; it bundles no NotchNook assets or code.
 
+
+## Notarized builds (distribute without Gatekeeper warnings)
+
+One-time setup:
+
+1. **Developer ID Application certificate** — requires a paid Apple Developer
+   membership; only the **Account Holder** can create this cert type. Easiest
+   path: Xcode → Settings → Accounts → your team → Manage Certificates → **+**
+   → *Developer ID Application* (or developer.apple.com → Certificates).
+2. **App-specific password** for notarytool: create one at
+   [account.apple.com](https://account.apple.com) → Sign-In and Security →
+   App-Specific Passwords, then store it:
+
+   ```bash
+   xcrun notarytool store-credentials atoll-notary \
+     --apple-id you@example.com --team-id YOURTEAMID --password <app-specific-pw>
+   ```
+
+Then every release is one command:
+
+```bash
+./scripts/notarize.sh    # build universal → sign (hardened runtime) → notarize → staple → DMG
+```
+
+The output DMG installs on any Mac with no quarantine friction. Unsigned local
+builds remain `./scripts/build-app.sh`; un-notarized DMGs `./scripts/package-dmg.sh`.
+
 ## License
 
 MIT
