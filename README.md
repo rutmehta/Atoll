@@ -7,6 +7,47 @@ pinged when they need you, and approve tool permissions without switching to the
 
 > macOS 14+ · Apple Silicon & Intel · Swift/SwiftUI · no sandbox (it can't be — see below)
 
+## Install
+
+Grab the latest universal DMG and drag Atoll to Applications:
+
+```bash
+curl -L -o Atoll.dmg https://github.com/rutmehta/Atoll/releases/download/v0.3.1/Atoll-0.3.1.dmg
+open Atoll.dmg
+```
+
+Or build from source: `./scripts/build-app.sh && open dist/Atoll.app`
+
+> Heads-up: the current release is ad-hoc signed, so macOS shows a one-time
+> Gatekeeper prompt on first launch (see **Known limitations**). Follow
+> [Notarized builds](#notarized-builds-distribute-without-gatekeeper-warnings) to ship
+> zero-warning installs.
+
+## The hook in action
+
+A Claude Code session runs in the notch — watch it work, get pinged when it needs you,
+and approve a tool permission without leaving the notch:
+
+![Atoll: approve a tool permission from the notch](Screenshots/demo.gif)
+
+## Screenshots
+
+**Home** — media, calendar and widgets in the notch:
+
+![Home](Screenshots/home.png)
+
+**Agents** — live Claude Code / Codex session monitor with state, tool feed and usage:
+
+![Agent sessions in the notch](Screenshots/agents-view.png)
+
+**Permission approval** — the red pulse means an agent is waiting; approve right there:
+
+![Approve from the notch](Screenshots/approval-card.png)
+
+**Shelf / tray** — drag files, links and text (plus AirDrop) to the notch:
+
+![Shelf](Screenshots/shelf.png)
+
 ## Features
 
 ### The Nook (NotchNook parity)
@@ -96,6 +137,26 @@ boring.notch techniques, macOS API recipes) live in [docs/](docs/).
 Atoll is a clean-room reimplementation informed by public documentation and
 open-source references; it bundles no NotchNook assets or code.
 
+
+## Known limitations
+
+Honest caveats so you're not surprised:
+
+- **Not notarized (yet).** Released DMGs are ad-hoc signed, so a fresh Mac shows a
+  Gatekeeper warning on first launch (Open Anyway) until a Developer ID certificate is
+  set up. `scripts/make-app.sh` → `scripts/notarize.sh` documents the one-time Apple
+  setup; [Notarized builds](#notarized-builds-distribute-without-gatekeeper-warnings)
+  turns that into one command. Until then, expect the quarantine prompt.
+- **No sandbox, no App Store.** System-wide now-playing, the HUD event tap and brightness
+  need capabilities the sandbox forbids (see *Why no sandbox / App Store?*).
+- **Agent hooks are opt-in.** Sessions only show up in the notch after you install the
+  hooks in *Settings → Agents → Install hooks*, and only while Atoll is running. It
+  tracks Claude Code and Codex sessions that emit hook events — non-interactive or
+  print-mode runs may not appear.
+- **One-time permissions per feature.** Calendar, Camera, Accessibility, Notifications
+  and Automation are each requested on first use; everything is off until then.
+- **Notch geometry varies by display.** A real notch is cleanest; notchless and external
+  displays use a virtual notch whose look can differ across panels.
 
 ## Notarized builds (distribute without Gatekeeper warnings)
 
