@@ -38,5 +38,32 @@ if [ -f Resources/AppIcon.icns ]; then
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist" 2>/dev/null || true
 fi
 
-codesign --force --deep --sign - "$APP"
+# Sign with Developer ID when available so TCC grants (accessibility, screen
+# recording) survive rebuilds; ad-hoc otherwise. Pin by hash, not name — the
+# keychain also holds Apple Development certs that would match a substring.
+IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning \
+  | awk '/Developer ID Application/ {print $2; exit}')}"
+if [ -n "$IDENTITY" ]; then
+  # Inner code first, then the bundle — never --deep for real signing.
+  shopt -s nullglob
+  for dylib in "$APP/Contents/Frameworks/"*.dylib; do
+    codesign --force --options runtime --timestamp --sign "$IDENTITY" "$dylib"
+  done
+  shopt -u nullglob
+  SPARKLE_FW="$APP/Contents/Frameworks/Sparkle.framework"
+  if [ -d "$SPARKLE_FW" ]; then
+    for nested in "$SPARKLE_FW"/Versions/B/XPCServices/*.xpc \
+                  "$SPARKLE_FW"/Versions/B/Autoupdate \
+                  "$SPARKLE_FW"/Versions/B/Updater.app; do
+      [ -e "$nested" ] && codesign --force --options runtime --timestamp --sign "$IDENTITY" "$nested"
+    done
+    codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE_FW"
+  fi
+  codesign --force --options runtime --timestamp \
+    --entitlements Resources/Atoll.entitlements \
+    --sign "$IDENTITY" "$APP"
+else
+  codesign --force --deep --sign - "$APP"
+fi
+codesign --verify --strict --deep "$APP"
 echo "Built $APP"

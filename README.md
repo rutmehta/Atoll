@@ -12,16 +12,13 @@ pinged when they need you, and approve tool permissions without switching to the
 Grab the latest universal DMG and drag Atoll to Applications:
 
 ```bash
-curl -L -o Atoll.dmg https://github.com/rutmehta/Atoll/releases/download/v0.3.1/Atoll-0.3.1.dmg
+curl -L -o Atoll.dmg https://github.com/rutmehta/Atoll/releases/download/v0.3.2/Atoll-0.3.2.dmg
 open Atoll.dmg
 ```
 
 Or build from source: `./scripts/build-app.sh && open dist/Atoll.app`
 
-> Heads-up: the current release is ad-hoc signed, so macOS shows a one-time
-> Gatekeeper prompt on first launch (see **Known limitations**). Follow
-> [Notarized builds](#notarized-builds-distribute-without-gatekeeper-warnings) to ship
-> zero-warning installs.
+> Releases from v0.3.2 are Developer ID signed and notarized by Apple.
 
 ## The hook in action
 
@@ -142,11 +139,6 @@ open-source references; it bundles no NotchNook assets or code.
 
 Honest caveats so you're not surprised:
 
-- **Not notarized (yet).** Released DMGs are ad-hoc signed, so a fresh Mac shows a
-  Gatekeeper warning on first launch (Open Anyway) until a Developer ID certificate is
-  set up. `scripts/make-app.sh` → `scripts/notarize.sh` documents the one-time Apple
-  setup; [Notarized builds](#notarized-builds-distribute-without-gatekeeper-warnings)
-  turns that into one command. Until then, expect the quarantine prompt.
 - **No sandbox, no App Store.** System-wide now-playing, the HUD event tap and brightness
   need capabilities the sandbox forbids (see *Why no sandbox / App Store?*).
 - **Agent hooks are opt-in.** Sessions only show up in the notch after you install the
@@ -181,8 +173,8 @@ Then every release is one command:
 ./scripts/notarize.sh    # build universal → sign (hardened runtime) → notarize → staple → DMG
 ```
 
-The output DMG installs on any Mac with no quarantine friction. Unsigned local
-builds remain `./scripts/build-app.sh`; un-notarized DMGs `./scripts/package-dmg.sh`.
+The output DMG is notarized for distribution. Local app
+builds use `./scripts/build-app.sh`; un-notarized DMGs `./scripts/package-dmg.sh`.
 
 ## License
 

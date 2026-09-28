@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-IDENTITY="${SIGN_IDENTITY:-Developer ID Application}"
+IDENTITY="${SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk '/Developer ID Application/ {print $2; exit}')}"
 PROFILE="${NOTARY_PROFILE:-atoll-notary}"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
 
@@ -53,9 +53,11 @@ cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 
 echo "Signing (hardened runtime)…"
 # Inner code first, then the bundle — never --deep for real signing.
+shopt -s nullglob
 for dylib in "$APP/Contents/Frameworks/"*.dylib; do
   codesign --force --options runtime --timestamp --sign "$IDENTITY" "$dylib"
 done
+shopt -u nullglob
 # Sparkle's nested executables, inside-out (per Sparkle's distribution docs).
 SPARKLE_FW="$APP/Contents/Frameworks/Sparkle.framework"
 if [ -d "$SPARKLE_FW" ]; then
@@ -75,6 +77,7 @@ echo "Notarizing the app…"
 ditto -c -k --keepParent "$APP" "dist/Atoll-notarize.zip"
 xcrun notarytool submit "dist/Atoll-notarize.zip" --keychain-profile "$PROFILE" --wait
 xcrun stapler staple "$APP"
+xcrun stapler validate "$APP"
 rm "dist/Atoll-notarize.zip"
 
 echo "Building DMG from the stapled app…"
@@ -89,6 +92,7 @@ echo "Notarizing the DMG…"
 codesign --force --timestamp --sign "$IDENTITY" "$DMG"
 xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
 xcrun stapler staple "$DMG"
+xcrun stapler validate "$DMG"
 
 echo "Gatekeeper check:"
 spctl --assess --type execute -vv "$APP" 2>&1 | sed 's/^/  /'

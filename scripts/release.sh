@@ -16,7 +16,7 @@ BUILDNUM=$(( $(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Resources/Inf
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" \
                         -c "Set :CFBundleVersion $BUILDNUM" Resources/Info.plist
 
-./scripts/package-dmg.sh
+./scripts/notarize.sh
 
 DMG="dist/Atoll-$VERSION.dmg"
 SIGNATURE=$("$SIGN_TOOL" "$DMG" | tr -d '\n')
@@ -49,6 +49,8 @@ EOF
 
 git add Resources/Info.plist appcast.xml
 git commit -m "Release $VERSION"
+git tag "v$VERSION"
+git push origin "v$VERSION"
+gh release create "v$VERSION" "$DMG" --verify-tag --title "Atoll $VERSION" --notes "$NOTES"
 git push
-gh release create "v$VERSION" "$DMG" --title "Atoll $VERSION" --notes "$NOTES"
 echo "Released v$VERSION — Sparkle clients update automatically from the appcast."
