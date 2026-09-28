@@ -4,6 +4,14 @@
     <title>Atoll</title>
     <language>en</language>
     <item>
+      <title>0.3.2</title>
+      <pubDate>Mon, 28 Sep 2026 15:06:48 -0400</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>0.3.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/rutmehta/Atoll/releases/download/v0.3.2/Atoll-0.3.2.dmg" sparkle:edSignature="BZDxK8mnfTGu9KioHJgGNGK7/R7Dd5UR2rbearO8+J70SbobQHLrE6DcERpN/u1MuRt7eaBiI1SKhcsFaLo1Cg==" length="5805893" type="application/octet-stream"/>
+    </item>
+    <item>
       <title>0.3.1</title>
       <pubDate>Mon, 20 Jul 2026 03:03:51 -0400</pubDate>
       <sparkle:version>6</sparkle:version>
