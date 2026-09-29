@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- EventKit permission prompts require this under hardened runtime. -->
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
 	<!-- Hardened runtime blocks outgoing Apple Events without this; the
 	     Spotify / Apple Music fallback controller needs it. -->
 	<key>com.apple.security.automation.apple-events</key>
